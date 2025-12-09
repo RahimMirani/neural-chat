@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { ChatInterface } from "@/components/chat-interface"
-import { NeuralNetworkVisualization } from "@/components/neural-network-visualization"
+import React, { useState } from "react"
+import { ChatInterface } from "../components/chat_ui"
+import { NeuralNetworkVisualization } from "../components/nn_ui"
 
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)

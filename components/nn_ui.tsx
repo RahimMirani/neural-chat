@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import React, { useEffect, useRef } from "react"
 
 interface Node {
   id: string
@@ -29,7 +29,7 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const nodesRef = useRef<Node[]>([])
   const connectionsRef = useRef<Connection[]>([])
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(0)
   const timeRef = useRef(0)
 
   // Initialize neural network
