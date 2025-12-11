@@ -26,7 +26,7 @@ export function ChatInterface({ onProcessingChange }: ChatInterfaceProps) {
   }, [messages])
 
   useEffect(() => {
-    onProcessingChange(status === "in_progress")
+    onProcessingChange(status === "submitted" || status === "streaming")
   }, [status, onProcessingChange])
 
   const handleSend = async (e: React.FormEvent) => {
@@ -99,7 +99,7 @@ export function ChatInterface({ onProcessingChange }: ChatInterfaceProps) {
           ))
         )}
 
-        {status === "in_progress" && (
+        {status === "streaming" && (
           <div className="flex justify-start">
             <div className="bg-white/5 border border-border/30 rounded-lg px-3 py-2">
               <div className="flex gap-1.5">
@@ -133,7 +133,7 @@ export function ChatInterface({ onProcessingChange }: ChatInterfaceProps) {
           />
           <Button
             type="submit"
-            disabled={status === "in_progress" || !input.trim()}
+            disabled={status === "streaming" || !input.trim()}
             className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold gap-2 h-9 text-sm disabled:opacity-50"
           >
             <Send className="w-3.5 h-3.5" />
