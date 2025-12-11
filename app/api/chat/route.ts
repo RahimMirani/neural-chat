@@ -1,4 +1,5 @@
 import { streamText, convertToModelMessages } from "ai"
+import { openai } from "@ai-sdk/openai"
 
 export const maxDuration = 30
 
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
     const prompt = convertToModelMessages(messages)
 
     const result = streamText({
-      model: "openai/gpt-4o-mini", 
+      model: openai("gpt-4o-mini"), // Using OpenAI provider directly
       prompt,
       abortSignal: req.signal,
     })
