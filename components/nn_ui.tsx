@@ -40,6 +40,11 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null)
   
+  // Zoom state
+  const [zoom, setZoom] = useState(1)
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  
   // Forward propagation state
   const propagationStepRef = useRef(0)
   const layerSizesRef = useRef<number[]>([5, 8, 12, 10, 8, 5])
@@ -196,12 +201,12 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
       const finalY = rotatedY
       const finalZ = -rotatedX * sinY + rotatedZ * cosY
 
-      const scale = focalLength / (focalLength + finalZ)
-      const screenX = canvas.width / 2 + finalX * scale
-      const screenY = canvas.height / 2 + finalY * scale
+      const scale = (focalLength / (focalLength + finalZ)) * zoom
+      const screenX = canvas.width / 2 + panOffset.x + finalX * scale
+      const screenY = canvas.height / 2 + panOffset.y + finalY * scale
 
       const distance = Math.sqrt((x - screenX) ** 2 + (y - screenY) ** 2)
-      const nodeRadius = 4 + node.activation * 6
+      const nodeRadius = (3 + node.activation * 6) * zoom
 
       if (distance < nodeRadius * 2) {
         // Clicked on a node - start dragging
@@ -238,10 +243,34 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
       nodesRef.current = nodesRef.current.map(node => {
         if (node.id === draggedNodeId && node.dragOffset) {
           const focalLength = 500
-          const scale = focalLength / (focalLength + node.z)
-          const worldX = (x + node.dragOffset.x - canvas.width / 2) / scale
-          const worldY = (y + node.dragOffset.y - canvas.height / 2) / scale
-          return { ...node, x: worldX, y: worldY }
+          const rotationXRad = rotationX
+          const rotationYRad = rotationY
+          
+          // Inverse rotation to get world coordinates
+          const cosX = Math.cos(rotationXRad)
+          const sinX = Math.sin(rotationXRad)
+          const cosY = Math.cos(rotationYRad)
+          const sinY = Math.sin(rotationYRad)
+          
+          // Calculate current screen position
+          let rotatedX = node.x
+          let rotatedY = node.y * cosX - node.z * sinX
+          let rotatedZ = node.y * sinX + node.z * cosX
+          const finalX = rotatedX * cosY + rotatedZ * sinY
+          const finalY = rotatedY
+          const finalZ = -rotatedX * sinY + rotatedZ * cosY
+          
+          const scale = (focalLength / (focalLength + finalZ)) * zoom
+          const worldX = (x - panOffset.x - canvas.width / 2) / scale
+          const worldY = (y - panOffset.y - canvas.height / 2) / scale
+          
+          // Inverse transform back to original space (simplified)
+          const invFinalX = worldX * cosY - worldY * sinY
+          const invFinalY = worldX * sinY + worldY * cosY
+          const invRotatedX = invFinalX
+          const invRotatedY = invFinalY * cosX + node.z * sinX
+          
+          return { ...node, x: invRotatedX, y: invRotatedY }
         }
         return node
       })
@@ -284,6 +313,78 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
         clientY: touch.clientY,
       } as React.MouseEvent)
     }
+  }
+
+  // Mouse wheel handler for zoom
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
+    
+    setMousePos({ x: mouseX, y: mouseY })
+
+    // Calculate zoom factor
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1
+    const newZoom = Math.max(0.3, Math.min(3, zoom * zoomFactor))
+
+    // Calculate the point under the mouse in world coordinates (before zoom)
+    const centerX = canvas.width / 2
+    const centerY = canvas.height / 2
+    const worldX = (mouseX - centerX - panOffset.x) / zoom
+    const worldY = (mouseY - centerY - panOffset.y) / zoom
+
+    // Calculate new pan offset to keep the point under mouse fixed
+    const newPanX = mouseX - centerX - worldX * newZoom
+    const newPanY = mouseY - centerY - worldY * newZoom
+
+    setZoom(newZoom)
+    setPanOffset({ x: newPanX, y: newPanY })
+  }
+
+  // Zoom in/out functions for buttons
+  const handleZoomIn = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const centerX = canvas.width / 2
+    const centerY = canvas.height / 2
+    const newZoom = Math.min(3, zoom * 1.2)
+    
+    const worldX = (centerX - panOffset.x) / zoom
+    const worldY = (centerY - panOffset.y) / zoom
+    
+    const newPanX = centerX - worldX * newZoom
+    const newPanY = centerY - worldY * newZoom
+    
+    setZoom(newZoom)
+    setPanOffset({ x: newPanX, y: newPanY })
+  }
+
+  const handleZoomOut = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const centerX = canvas.width / 2
+    const centerY = canvas.height / 2
+    const newZoom = Math.max(0.3, zoom * 0.8)
+    
+    const worldX = (centerX - panOffset.x) / zoom
+    const worldY = (centerY - panOffset.y) / zoom
+    
+    const newPanX = centerX - worldX * newZoom
+    const newPanY = centerY - worldY * newZoom
+    
+    setZoom(newZoom)
+    setPanOffset({ x: newPanX, y: newPanY })
+  }
+
+  const handleResetZoom = () => {
+    setZoom(1)
+    setPanOffset({ x: 0, y: 0 })
   }
 
   // Animation loop with 3D rendering
@@ -349,13 +450,13 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
         const fromPos = rotate3D(fromNode.x, fromNode.y, fromNode.z)
         const toPos = rotate3D(toNode.x, toNode.y, toNode.z)
 
-        const scale1 = focalLength / (focalLength + fromPos.z)
-        const scale2 = focalLength / (focalLength + toPos.z)
+        const scale1 = (focalLength / (focalLength + fromPos.z)) * zoom
+        const scale2 = (focalLength / (focalLength + toPos.z)) * zoom
 
-        const x1 = canvas.width / 2 + fromPos.x * scale1
-        const y1 = canvas.height / 2 + fromPos.y * scale1
-        const x2 = canvas.width / 2 + toPos.x * scale2
-        const y2 = canvas.height / 2 + toPos.y * scale2
+        const x1 = canvas.width / 2 + panOffset.x + fromPos.x * scale1
+        const y1 = canvas.height / 2 + panOffset.y + fromPos.y * scale1
+        const x2 = canvas.width / 2 + panOffset.x + toPos.x * scale2
+        const y2 = canvas.height / 2 + panOffset.y + toPos.y * scale2
 
         // Draw connection with signal flow
         const signalStrength = conn.signalFlow
@@ -396,9 +497,9 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
       // Draw nodes
       sortedNodes.forEach((node) => {
         const pos = rotate3D(node.x, node.y, node.z)
-        const scale = focalLength / (focalLength + pos.z)
-        const x = canvas.width / 2 + pos.x * scale
-        const y = canvas.height / 2 + pos.y * scale
+        const scale = (focalLength / (focalLength + pos.z)) * zoom
+        const x = canvas.width / 2 + panOffset.x + pos.x * scale
+        const y = canvas.height / 2 + panOffset.y + pos.y * scale
 
         const radius = 3 + node.activation * 6
         const glowRadius = radius + 4 + node.activation * 8
@@ -449,7 +550,7 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [rotationX, rotationY, isProcessing])
+  }, [rotationX, rotationY, zoom, panOffset, isProcessing])
 
   return (
     <div 
@@ -459,6 +560,7 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onWheel={handleWheel}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleMouseUp}
@@ -488,11 +590,40 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
         </div>
       </div>
 
+      {/* Zoom Controls */}
+      <div className="absolute top-6 left-6 bg-white/5 border border-white/10 rounded-lg p-2 backdrop-blur-sm flex flex-col gap-2">
+        <button
+          onClick={handleZoomIn}
+          className="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded text-foreground transition-colors text-sm font-bold"
+          title="Zoom In"
+        >
+          +
+        </button>
+        <button
+          onClick={handleZoomOut}
+          className="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded text-foreground transition-colors text-sm font-bold"
+          title="Zoom Out"
+        >
+          −
+        </button>
+        <button
+          onClick={handleResetZoom}
+          className="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded text-foreground transition-colors text-xs"
+          title="Reset Zoom"
+        >
+          ⌂
+        </button>
+        <div className="pt-1 border-t border-white/10">
+          <p className="text-xs text-foreground/60 text-center">{Math.round(zoom * 100)}%</p>
+        </div>
+      </div>
+
       {/* Controls Legend */}
       <div className="absolute top-6 right-6 bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm max-w-xs">
         <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Neural Network</p>
         <div className="space-y-1 text-xs text-foreground/60">
           <p>• Drag to rotate 3D view</p>
+          <p>• Scroll to zoom (towards cursor)</p>
           <p>• Click nodes to drag them</p>
           <p>• Green = positive weights</p>
           <p>• Red = negative weights</p>
