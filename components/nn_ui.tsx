@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 
 interface Node {
   id: string
@@ -9,16 +9,16 @@ interface Node {
   z: number
   layer: number
   activation: number
-  vx: number
-  vy: number
-  vz: number
+  bias: number
+  isDragging?: boolean
+  dragOffset?: { x: number; y: number }
 }
 
 interface Connection {
   fromId: string
   toId: string
-  strength: number
-  isActive: boolean
+  weight: number
+  signalFlow: number // 0-1, represents signal currently flowing
 }
 
 interface NeuralNetworkVisualizationProps {
@@ -27,38 +27,49 @@ interface NeuralNetworkVisualizationProps {
 
 export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisualizationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const nodesRef = useRef<Node[]>([])
   const connectionsRef = useRef<Connection[]>([])
   const animationRef = useRef<number>(0)
   const timeRef = useRef(0)
+  
+  // 3D rotation state
+  const [rotationX, setRotationX] = useState(-0.3)
+  const [rotationY, setRotationY] = useState(0.5)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null)
+  
+  // Forward propagation state
+  const propagationStepRef = useRef(0)
+  const layerSizesRef = useRef<number[]>([5, 8, 12, 10, 8, 5])
 
   // Initialize neural network
   useEffect(() => {
-    const layerSizes = [5, 8, 12, 10, 8, 5]
+    const layerSizes = layerSizesRef.current
     const newNodes: Node[] = []
     let nodeId = 0
 
-    // Create nodes for each layer
+    // Create nodes for each layer in a more structured 3D layout
     layerSizes.forEach((size, layer) => {
+      const layerZ = (layer - layerSizes.length / 2) * 120
       for (let i = 0; i < size; i++) {
         const angle = (i / size) * Math.PI * 2
-        const radius = 150 + layer * 60
+        const radius = 80 + layer * 40
         newNodes.push({
           id: `node-${nodeId}`,
           x: Math.cos(angle) * radius,
           y: Math.sin(angle) * radius,
-          z: Math.random() * 100 - 50,
+          z: layerZ + (Math.random() - 0.5) * 30,
           layer,
-          activation: Math.random() * 0.3,
-          vx: (Math.random() - 0.5) * 0.5,
-          vy: (Math.random() - 0.5) * 0.5,
-          vz: (Math.random() - 0.5) * 0.5,
+          activation: 0,
+          bias: (Math.random() - 0.5) * 0.5,
         })
         nodeId++
       }
     })
 
-    // Create connections between adjacent layers using IDs instead of references
+    // Create fully connected layers (more realistic neural network)
     const newConnections: Connection[] = []
     for (let layer = 0; layer < layerSizes.length - 1; layer++) {
       const currentLayerStart = layerSizes.slice(0, layer).reduce((a, b) => a + b, 0)
@@ -66,15 +77,14 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
       const currentLayerSize = layerSizes[layer]
       const nextLayerSize = layerSizes[layer + 1]
 
+      // Fully connect layers (each node connects to all nodes in next layer)
       for (let i = 0; i < currentLayerSize; i++) {
-        const connectionCount = Math.floor(Math.random() * 2) + 2
-        for (let j = 0; j < connectionCount; j++) {
-          const targetIdx = Math.floor(Math.random() * nextLayerSize)
+        for (let j = 0; j < nextLayerSize; j++) {
           newConnections.push({
             fromId: `node-${currentLayerStart + i}`,
-            toId: `node-${nextLayerStart + targetIdx}`,
-            strength: Math.random() * 0.8 + 0.2,
-            isActive: false,
+            toId: `node-${nextLayerStart + j}`,
+            weight: (Math.random() - 0.5) * 2, // Weight between -1 and 1
+            signalFlow: 0,
           })
         }
       }
@@ -84,26 +94,199 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
     connectionsRef.current = newConnections
   }, [])
 
-  // Update activations based on processing
+  // Forward propagation algorithm - simulates actual neural network computation
+  const performForwardPropagation = () => {
+    const nodes = nodesRef.current
+    const connections = connectionsRef.current
+    const layerSizes = layerSizesRef.current
+    
+    // Reset signal flow
+    connections.forEach(conn => {
+      conn.signalFlow = 0
+    })
+
+    // Initialize input layer with random activations (simulating input)
+    const inputLayerNodes = nodes.filter(n => n.layer === 0)
+    inputLayerNodes.forEach(node => {
+      node.activation = Math.random() * 0.8 + 0.2 // Input activation
+    })
+
+    // Propagate through each layer
+    for (let layer = 0; layer < layerSizes.length - 1; layer++) {
+      const currentLayerNodes = nodes.filter(n => n.layer === layer)
+      const nextLayerNodes = nodes.filter(n => n.layer === layer + 1)
+
+      // For each node in the next layer, calculate weighted sum
+      nextLayerNodes.forEach(nextNode => {
+        let weightedSum = nextNode.bias
+
+        // Sum weighted inputs from current layer
+        currentLayerNodes.forEach(currentNode => {
+          const conn = connections.find(
+            c => c.fromId === currentNode.id && c.toId === nextNode.id
+          )
+          if (conn) {
+            weightedSum += currentNode.activation * conn.weight
+            // Set signal flow based on activation and weight
+            conn.signalFlow = Math.abs(currentNode.activation * conn.weight)
+          }
+        })
+
+        // Apply activation function (ReLU-like)
+        nextNode.activation = Math.max(0, Math.min(1, weightedSum / 2))
+      })
+    }
+  }
+
+  // Trigger forward propagation when processing starts
   useEffect(() => {
     if (isProcessing) {
-      const activationInterval = setInterval(() => {
-        nodesRef.current = nodesRef.current.map((node) => ({
+      propagationStepRef.current = 0
+      // Perform forward propagation multiple times during processing
+      const propagationInterval = setInterval(() => {
+        performForwardPropagation()
+        propagationStepRef.current++
+      }, 200) // Every 200ms
+
+      return () => clearInterval(propagationInterval)
+    } else {
+      // Gradually decay activations when not processing
+      const decayInterval = setInterval(() => {
+        nodesRef.current = nodesRef.current.map(node => ({
           ...node,
-          activation: Math.max(0, node.activation - 0.02 + Math.random() * 0.08),
+          activation: Math.max(0, node.activation * 0.95),
+        }))
+        connectionsRef.current = connectionsRef.current.map(conn => ({
+          ...conn,
+          signalFlow: conn.signalFlow * 0.9,
         }))
       }, 50)
 
-      return () => clearInterval(activationInterval)
-    } else {
-      nodesRef.current = nodesRef.current.map((node) => ({
-        ...node,
-        activation: Math.max(0, node.activation - 0.05),
-      }))
+      return () => clearInterval(decayInterval)
     }
   }, [isProcessing])
 
-  // Animation loop
+  // Mouse/touch handlers for 3D rotation
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+
+    // Check if clicking on a node
+    const nodes = nodesRef.current
+    const focalLength = 500
+    const rotationXRad = rotationX
+    const rotationYRad = rotationY
+
+    for (const node of nodes) {
+      // Rotate node position
+      const cosX = Math.cos(rotationXRad)
+      const sinX = Math.sin(rotationXRad)
+      const cosY = Math.cos(rotationYRad)
+      const sinY = Math.sin(rotationYRad)
+
+      let rotatedX = node.x
+      let rotatedY = node.y * cosX - node.z * sinX
+      let rotatedZ = node.y * sinX + node.z * cosX
+
+      const finalX = rotatedX * cosY + rotatedZ * sinY
+      const finalY = rotatedY
+      const finalZ = -rotatedX * sinY + rotatedZ * cosY
+
+      const scale = focalLength / (focalLength + finalZ)
+      const screenX = canvas.width / 2 + finalX * scale
+      const screenY = canvas.height / 2 + finalY * scale
+
+      const distance = Math.sqrt((x - screenX) ** 2 + (y - screenY) ** 2)
+      const nodeRadius = 4 + node.activation * 6
+
+      if (distance < nodeRadius * 2) {
+        // Clicked on a node - start dragging
+        setDraggedNodeId(node.id)
+        setIsDragging(true)
+        setDragStart({ x, y })
+        nodesRef.current = nodesRef.current.map(n =>
+          n.id === node.id
+            ? { ...n, isDragging: true, dragOffset: { x: screenX - x, y: screenY - y } }
+            : n
+        )
+        return
+      }
+    }
+
+    // Not clicking on a node - start rotation
+    setIsDragging(true)
+    setDragStart({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+
+    if (draggedNodeId) {
+      // Dragging a node
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const rect = canvas.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+
+      // Update node position (simplified - would need inverse rotation for proper 3D)
+      nodesRef.current = nodesRef.current.map(node => {
+        if (node.id === draggedNodeId && node.dragOffset) {
+          const focalLength = 500
+          const scale = focalLength / (focalLength + node.z)
+          const worldX = (x + node.dragOffset.x - canvas.width / 2) / scale
+          const worldY = (y + node.dragOffset.y - canvas.height / 2) / scale
+          return { ...node, x: worldX, y: worldY }
+        }
+        return node
+      })
+    } else {
+      // Rotating view
+      const deltaX = e.clientX - dragStart.x
+      const deltaY = e.clientY - dragStart.y
+      setRotationY(prev => prev + deltaX * 0.01)
+      setRotationX(prev => Math.max(-Math.PI / 2, Math.min(Math.PI / 2, prev - deltaY * 0.01)))
+      setDragStart({ x: e.clientX, y: e.clientY })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+    if (draggedNodeId) {
+      nodesRef.current = nodesRef.current.map(n =>
+        n.id === draggedNodeId ? { ...n, isDragging: false, dragOffset: undefined } : n
+      )
+      setDraggedNodeId(null)
+    }
+  }
+
+  // Touch handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0]
+      handleMouseDown({
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      } as React.MouseEvent)
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0]
+      handleMouseMove({
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      } as React.MouseEvent)
+    }
+  }
+
+  // Animation loop with 3D rendering
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -111,7 +294,6 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    // Set canvas size
     const resizeCanvas = () => {
       canvas.width = canvas.parentElement?.clientWidth || 800
       canvas.height = canvas.parentElement?.clientHeight || 600
@@ -119,121 +301,143 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
     resizeCanvas()
     window.addEventListener("resize", resizeCanvas)
 
+    const rotate3D = (x: number, y: number, z: number) => {
+      const cosX = Math.cos(rotationX)
+      const sinX = Math.sin(rotationX)
+      const cosY = Math.cos(rotationY)
+      const sinY = Math.sin(rotationY)
+
+      let rotatedX = x
+      let rotatedY = y * cosX - z * sinX
+      let rotatedZ = y * sinX + z * cosX
+
+      const finalX = rotatedX * cosY + rotatedZ * sinY
+      const finalY = rotatedY
+      const finalZ = -rotatedX * sinY + rotatedZ * cosY
+
+      return { x: finalX, y: finalY, z: finalZ }
+    }
+
     const animate = () => {
       timeRef.current += 1
 
-      ctx.fillStyle = "rgba(0, 0, 0, 0.08)"
+      // Clear with trail effect
+      ctx.fillStyle = "rgba(0, 0, 0, 0.1)"
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
       const nodes = nodesRef.current
       const connections = connectionsRef.current
+      const focalLength = 500
 
-      // Update node positions with gentle physics
-      const updatedNodes = nodes.map((node) => ({
-        ...node,
-        x: node.x + node.vx * 0.1,
-        y: node.y + node.vy * 0.1,
-        z: node.z + node.vz * 0.1,
-        vx: node.vx * 0.98 + (Math.random() - 0.5) * 0.01,
-        vy: node.vy * 0.98 + (Math.random() - 0.5) * 0.01,
-        vz: node.vz * 0.98 + (Math.random() - 0.5) * 0.01,
-      }))
+      // Sort connections by depth for proper rendering
+      const sortedConnections = [...connections].sort((a, b) => {
+        const nodeA = nodes.find(n => n.id === a.fromId)
+        const nodeB = nodes.find(n => n.id === b.fromId)
+        if (!nodeA || !nodeB) return 0
+        const posA = rotate3D(nodeA.x, nodeA.y, nodeA.z)
+        const posB = rotate3D(nodeB.x, nodeB.y, nodeB.z)
+        return posA.z - posB.z
+      })
 
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.1)"
-      ctx.lineWidth = 1
-
-      // Draw connections
-      connections.forEach((conn) => {
-        const fromNode = updatedNodes.find((n) => n.id === conn.fromId)
-        const toNode = updatedNodes.find((n) => n.id === conn.toId)
+      // Draw connections with signal flow
+      sortedConnections.forEach((conn) => {
+        const fromNode = nodes.find((n) => n.id === conn.fromId)
+        const toNode = nodes.find((n) => n.id === conn.toId)
 
         if (!fromNode || !toNode) return
 
-        // Perspective projection
-        const focalLength = 500
-        const scale1 = focalLength / (focalLength + fromNode.z)
-        const scale2 = focalLength / (focalLength + toNode.z)
+        const fromPos = rotate3D(fromNode.x, fromNode.y, fromNode.z)
+        const toPos = rotate3D(toNode.x, toNode.y, toNode.z)
 
-        const x1 = canvas.width / 2 + fromNode.x * scale1
-        const y1 = canvas.height / 2 + fromNode.y * scale1
-        const x2 = canvas.width / 2 + toNode.x * scale2
-        const y2 = canvas.height / 2 + toNode.y * scale2
+        const scale1 = focalLength / (focalLength + fromPos.z)
+        const scale2 = focalLength / (focalLength + toPos.z)
 
-        // Draw connection with varying opacity based on node activation
-        const maxActivation = Math.max(fromNode.activation, toNode.activation)
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.08 + maxActivation * 0.3})`
-        ctx.lineWidth = 0.5 + maxActivation * 1.2
+        const x1 = canvas.width / 2 + fromPos.x * scale1
+        const y1 = canvas.height / 2 + fromPos.y * scale1
+        const x2 = canvas.width / 2 + toPos.x * scale2
+        const y2 = canvas.height / 2 + toPos.y * scale2
+
+        // Draw connection with signal flow
+        const signalStrength = conn.signalFlow
+        const weightStrength = Math.abs(conn.weight)
+        const opacity = 0.05 + signalStrength * 0.4 + weightStrength * 0.1
+        const lineWidth = 0.5 + signalStrength * 2 + weightStrength * 0.5
+
+        ctx.strokeStyle = conn.weight > 0 
+          ? `rgba(34, 197, 94, ${opacity})` // Green for positive weights
+          : `rgba(239, 68, 68, ${opacity})` // Red for negative weights
+        ctx.lineWidth = lineWidth
 
         ctx.beginPath()
         ctx.moveTo(x1, y1)
         ctx.lineTo(x2, y2)
         ctx.stroke()
+
+        // Draw signal pulse along connection
+        if (signalStrength > 0.1) {
+          const pulsePhase = (timeRef.current % 20) / 20
+          const pulseX = x1 + (x2 - x1) * pulsePhase
+          const pulseY = y1 + (y2 - y1) * pulsePhase
+
+          ctx.fillStyle = `rgba(250, 204, 21, ${signalStrength * 0.8})`
+          ctx.beginPath()
+          ctx.arc(pulseX, pulseY, 3 * signalStrength, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      })
+
+      // Sort nodes by depth
+      const sortedNodes = [...nodes].sort((a, b) => {
+        const posA = rotate3D(a.x, a.y, a.z)
+        const posB = rotate3D(b.x, b.y, b.z)
+        return posB.z - posA.z
       })
 
       // Draw nodes
-      updatedNodes.forEach((node) => {
-        const focalLength = 500
-        const scale = focalLength / (focalLength + node.z)
-        const x = canvas.width / 2 + node.x * scale
-        const y = canvas.height / 2 + node.y * scale
+      sortedNodes.forEach((node) => {
+        const pos = rotate3D(node.x, node.y, node.z)
+        const scale = focalLength / (focalLength + pos.z)
+        const x = canvas.width / 2 + pos.x * scale
+        const y = canvas.height / 2 + pos.y * scale
 
-        const radius = 2 + node.activation * 4
-        const glowRadius = radius + 3 + node.activation * 5
+        const radius = 3 + node.activation * 6
+        const glowRadius = radius + 4 + node.activation * 8
 
-        // Glow effect - yellow
+        // Glow effect
         const gradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius)
-        gradient.addColorStop(0, `rgba(250, 204, 21, ${0.2 * node.activation})`)
+        gradient.addColorStop(0, `rgba(250, 204, 21, ${0.3 * node.activation})`)
+        gradient.addColorStop(0.5, `rgba(250, 204, 21, ${0.1 * node.activation})`)
         gradient.addColorStop(1, "rgba(250, 204, 21, 0)")
         ctx.fillStyle = gradient
         ctx.beginPath()
         ctx.arc(x, y, glowRadius, 0, Math.PI * 2)
         ctx.fill()
 
-        // Core node - white
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.6 + node.activation * 0.4})`
+        // Core node
+        const nodeColor = node.activation > 0.5 
+          ? `rgba(34, 197, 94, ${0.8 + node.activation * 0.2})` // Green for high activation
+          : `rgba(250, 204, 21, ${0.6 + node.activation * 0.4})` // Yellow for medium
+        ctx.fillStyle = nodeColor
         ctx.beginPath()
         ctx.arc(x, y, radius, 0, Math.PI * 2)
         ctx.fill()
 
         // Highlight
-        ctx.fillStyle = `rgba(250, 204, 21, ${0.5 * node.activation})`
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * node.activation})`
         ctx.beginPath()
         ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.4, 0, Math.PI * 2)
         ctx.fill()
+
+        // Layer indicator
+        if (node.layer === 0 || node.layer === layerSizesRef.current.length - 1) {
+          ctx.strokeStyle = `rgba(250, 204, 21, ${0.5 + node.activation * 0.5})`
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          ctx.arc(x, y, radius + 2, 0, Math.PI * 2)
+          ctx.stroke()
+        }
       })
 
-      // Draw connection pulses during processing
-      if (isProcessing) {
-        const pulsePhase = (timeRef.current % 30) / 30
-        const pulseSize = Math.sin(pulsePhase * Math.PI) * 0.5 + 0.5
-
-        connections.slice(0, Math.floor(connections.length * (pulsePhase + 0.3))).forEach((conn) => {
-          const fromNode = updatedNodes.find((n) => n.id === conn.fromId)
-          const toNode = updatedNodes.find((n) => n.id === conn.toId)
-
-          if (!fromNode || !toNode) return
-
-          const focalLength = 500
-          const scale1 = focalLength / (focalLength + fromNode.z)
-          const scale2 = focalLength / (focalLength + toNode.z)
-
-          const x1 = canvas.width / 2 + fromNode.x * scale1
-          const y1 = canvas.height / 2 + fromNode.y * scale1
-          const x2 = canvas.width / 2 + toNode.x * scale2
-          const y2 = canvas.height / 2 + toNode.y * scale2
-
-          // Interpolate along the line
-          const lerpX = x1 + (x2 - x1) * pulsePhase
-          const lerpY = y1 + (y2 - y1) * pulsePhase
-
-          ctx.fillStyle = `rgba(250, 204, 21, ${0.6 * (1 - pulseSize)})`
-          ctx.beginPath()
-          ctx.arc(lerpX, lerpY, 3 * pulseSize, 0, Math.PI * 2)
-          ctx.fill()
-        })
-      }
-
-      nodesRef.current = updatedNodes
       animationRef.current = requestAnimationFrame(animate)
     }
 
@@ -245,15 +449,25 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [isProcessing])
+  }, [rotationX, rotationY, isProcessing])
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-black">
+    <div 
+      ref={containerRef}
+      className="relative w-full h-full overflow-hidden bg-black cursor-grab active:cursor-grabbing"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleMouseUp}
+    >
       <canvas ref={canvasRef} className="w-full h-full" />
 
       {/* Info Panel */}
       <div className="absolute bottom-6 left-6 right-6 bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Nodes</p>
             <p className="text-lg font-bold text-yellow-400">{nodesRef.current.length}</p>
@@ -262,19 +476,27 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
             <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Connections</p>
             <p className="text-lg font-bold text-yellow-400">{connectionsRef.current.length}</p>
           </div>
+          <div>
+            <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Layers</p>
+            <p className="text-lg font-bold text-yellow-400">{layerSizesRef.current.length}</p>
+          </div>
         </div>
         <div className="mt-2 pt-2 border-t border-white/10">
-          <p className="text-xs text-foreground/50">{isProcessing ? "🔴 Processing..." : "🟢 Idle"}</p>
+          <p className="text-xs text-foreground/50">
+            {isProcessing ? "🔴 Processing..." : "🟢 Idle"}
+          </p>
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="absolute top-6 right-6 bg-white/5 border border-white/10 rounded-lg p-2 backdrop-blur-sm max-w-xs">
+      {/* Controls Legend */}
+      <div className="absolute top-6 right-6 bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm max-w-xs">
         <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Neural Network</p>
         <div className="space-y-1 text-xs text-foreground/60">
-          <p>• Nodes represent neurons</p>
-          <p>• Lines show synaptic connections</p>
-          <p>• Brightness indicates activation</p>
+          <p>• Drag to rotate 3D view</p>
+          <p>• Click nodes to drag them</p>
+          <p>• Green = positive weights</p>
+          <p>• Red = negative weights</p>
+          <p>• Brightness = activation level</p>
         </div>
       </div>
     </div>
