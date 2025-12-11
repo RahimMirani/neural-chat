@@ -134,7 +134,7 @@ export function ChatInterface({ onProcessingChange }: ChatInterfaceProps) {
           <Button
             type="submit"
             disabled={status === "streaming" || !input.trim()}
-            className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold gap-2 h-9 text-sm disabled:opacity-50"
+            className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold gap-2 h-9 text-sm disabled:opacity-50 cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             Send
