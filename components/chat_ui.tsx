@@ -6,7 +6,7 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "../components/ui/button.tsx"
-import { Send, Zap } from "lucide-react"
+import { Send, Zap, Sparkles, Brain } from "lucide-react"
 
 interface ChatInterfaceProps {
   onProcessingChange: (isProcessing: boolean) => void
@@ -46,12 +46,22 @@ export function ChatInterface({ onProcessingChange }: ChatInterfaceProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="border-b border-border/50 px-4 py-3 bg-gradient-to-b from-yellow-400/5 to-transparent">
-        <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-yellow-400" />
-          <div>
-            <h1 className="text-sm font-semibold text-foreground">Neural Chat</h1>
-            <p className="text-xs text-foreground/50">Real-time visualization</p>
+      <div className="border-b border-yellow-400/20 px-4 py-4 bg-gradient-to-b from-yellow-400/10 via-yellow-400/5 to-transparent">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="absolute inset-0 bg-yellow-400/30 rounded-xl blur-md animate-pulse" />
+            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400/40 to-yellow-500/20 border border-yellow-400/50 flex items-center justify-center backdrop-blur-sm shadow-lg">
+              <Brain className="w-5 h-5 text-yellow-400" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h1 className="text-base font-bold text-foreground bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-[shimmer_3s_ease-in-out_infinite]">
+              Neural Chat
+            </h1>
+            <p className="text-xs text-foreground/60 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+              Real-time AI visualization
+            </p>
           </div>
         </div>
       </div>
@@ -66,18 +76,45 @@ export function ChatInterface({ onProcessingChange }: ChatInterfaceProps) {
             -ms-overflow-style: none;
             scrollbar-width: none;
           }
+          @keyframes shimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+          }
         `}</style>
         {messages.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center space-y-3">
-              <div className="w-12 h-12 mx-auto rounded-lg bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-yellow-400" />
+          <div className="h-full flex items-center justify-center px-4">
+            <div className="text-center space-y-6 max-w-sm">
+              <div className="relative mx-auto w-24 h-24">
+                <div className="absolute inset-0 bg-yellow-400/20 rounded-2xl blur-2xl animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-yellow-500/20 rounded-2xl animate-[spin_20s_linear_infinite]" style={{ transform: 'perspective(1000px) rotateY(15deg)' }} />
+                <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-yellow-400/20 to-yellow-500/10 border-2 border-yellow-400/40 flex items-center justify-center backdrop-blur-sm shadow-xl">
+                  <div className="relative">
+                    <Brain className="w-12 h-12 text-yellow-400" />
+                    <Sparkles className="w-6 h-6 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
+                  </div>
+                </div>
               </div>
-              <div>
-                <h2 className="text-foreground font-semibold text-sm mb-1">Welcome to Neural Chat</h2>
-                <p className="text-foreground/60 text-xs max-w-xs">
-                  Ask me anything and watch the neural network activate
+              <div className="space-y-2">
+                <h2 className="text-foreground font-bold text-lg bg-gradient-to-r from-yellow-400 to-yellow-500 bg-clip-text text-transparent">
+                  Welcome to Neural Chat
+                </h2>
+                <p className="text-foreground/70 text-sm leading-relaxed">
+                  Ask me anything and watch the neural network come alive with real-time activations and signal propagation
                 </p>
+              </div>
+              <div className="flex flex-wrap gap-2 justify-center pt-2">
+                {["Tell me a joke", "Explain neural networks", "What's AI?"].map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setInput(suggestion)
+                      inputRef.current?.focus()
+                    }}
+                    className="px-4 py-2 text-xs bg-yellow-400/10 hover:bg-yellow-400/20 border border-yellow-400/30 rounded-full text-foreground/80 transition-all hover:scale-105 hover:border-yellow-400/50"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
