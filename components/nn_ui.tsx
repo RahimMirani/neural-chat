@@ -806,14 +806,17 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
             <div>
               <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Nodes</p>
               {isEditing ? (
-                <input
-                  type="number"
-                  min="6"
-                  max="200"
-                  value={editNodes}
-                  onChange={(e) => setEditNodes(Math.max(6, Math.min(200, parseInt(e.target.value) || 6)))}
-                  className="w-16 text-lg font-bold text-yellow-400 bg-white/10 border border-yellow-400/50 rounded px-2 py-0.5 focus:outline-none focus:border-yellow-400"
-                />
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-yellow-400 w-8">{editNodes}</span>
+                  <input
+                    type="range"
+                    min="12"
+                    max="150"
+                    value={editNodes}
+                    onChange={(e) => setEditNodes(parseInt(e.target.value))}
+                    className="w-20 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-yellow-400"
+                  />
+                </div>
               ) : (
                 <p className="text-lg font-bold text-yellow-400">{layerSizes.reduce((a, b) => a + b, 0)}</p>
               )}
@@ -827,14 +830,17 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
             <div>
               <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Layers</p>
               {isEditing ? (
-                <input
-                  type="number"
-                  min="2"
-                  max="12"
-                  value={editLayers}
-                  onChange={(e) => setEditLayers(Math.max(2, Math.min(12, parseInt(e.target.value) || 2)))}
-                  className="w-16 text-lg font-bold text-yellow-400 bg-white/10 border border-yellow-400/50 rounded px-2 py-0.5 focus:outline-none focus:border-yellow-400"
-                />
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-yellow-400 w-8">{editLayers}</span>
+                  <input
+                    type="range"
+                    min="3"
+                    max="10"
+                    value={editLayers}
+                    onChange={(e) => setEditLayers(parseInt(e.target.value))}
+                    className="w-20 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-yellow-400"
+                  />
+                </div>
               ) : (
                 <p className="text-lg font-bold text-yellow-400">{layerSizes.length}</p>
               )}
@@ -879,8 +885,8 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
               <p className="text-xs font-mono text-yellow-400/80">{layerSizes.join(" → ")}</p>
             </div>
             
-            {/* Speed Toggle - only visible in edit mode */}
-            {isEditing && (
+            {/* Speed Toggle/Display */}
+            {isEditing ? (
               <div className="flex items-center gap-1">
                 <span className="text-xs text-foreground/50 mr-2">Speed</span>
                 <button
@@ -903,6 +909,13 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
                 >
                   Fast
                 </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-foreground/50">Speed</span>
+                <span className="text-xs text-cyan-400 font-medium">
+                  {pulseSpeed > 100 ? "Slow" : "Fast"}
+                </span>
               </div>
             )}
           </div>
