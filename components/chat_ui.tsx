@@ -110,7 +110,7 @@ export function ChatInterface({ onProcessingChange }: ChatInterfaceProps) {
                       setInput(suggestion)
                       inputRef.current?.focus()
                     }}
-                    className="px-4 py-2 text-xs bg-yellow-400/10 hover:bg-yellow-400/20 border border-yellow-400/30 rounded-full text-foreground/80 transition-all hover:scale-105 hover:border-yellow-400/50"
+                    className="px-4 py-2 text-xs bg-yellow-400/10 hover:bg-yellow-400/20 border border-yellow-400/30 rounded-full text-foreground/80 transition-all hover:scale-105 hover:border-yellow-400/50 cursor-pointer"
                   >
                     {suggestion}
                   </button>
