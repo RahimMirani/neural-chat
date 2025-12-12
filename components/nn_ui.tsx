@@ -58,10 +58,8 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
   const propagationStepRef = useRef(0)
   
   // Network architecture state - user configurable
-  const [numLayers, setNumLayers] = useState(6)
-  const [nodesPerLayer, setNodesPerLayer] = useState(8)
   const [layerSizes, setLayerSizes] = useState<number[]>([5, 8, 12, 10, 8, 5])
-  const [showControls, setShowControls] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   
   // Pulse speed control (frames per pulse cycle - higher = slower)
   const [pulseSpeed, setPulseSpeed] = useState(120) // Slowed down from 60
@@ -71,27 +69,6 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
   const lastTokenIdRef = useRef<number>(0)
   const [tokenCount, setTokenCount] = useState(0)
 
-  // Generate layer sizes based on user config
-  const generateLayerSizes = (layers: number, baseNodes: number): number[] => {
-    const sizes: number[] = []
-    const mid = Math.floor(layers / 2)
-    
-    for (let i = 0; i < layers; i++) {
-      // Create a pyramid shape - smaller at edges, larger in middle
-      const distFromMid = Math.abs(i - mid)
-      const scale = 1 + (mid - distFromMid) * 0.4
-      const size = Math.max(3, Math.round(baseNodes * scale))
-      sizes.push(size)
-    }
-    
-    return sizes
-  }
-
-  // Update layer sizes when user changes config
-  const handleApplyConfig = () => {
-    const newSizes = generateLayerSizes(numLayers, nodesPerLayer)
-    setLayerSizes(newSizes)
-  }
 
   // Initialize neural network - rebuilds when layerSizes changes
   useEffect(() => {
@@ -775,25 +752,36 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
 
       {/* Info Panel */}
       <div className="absolute bottom-6 left-6 right-6 bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm">
-        <div className="grid grid-cols-4 gap-3">
-          <div>
-            <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Nodes</p>
-            <p className="text-lg font-bold text-yellow-400">{layerSizes.reduce((a, b) => a + b, 0)}</p>
+        <div className="flex items-start gap-3">
+          {/* Stats Grid */}
+          <div className="flex-1 grid grid-cols-4 gap-3">
+            <div>
+              <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Nodes</p>
+              <p className="text-lg font-bold text-yellow-400">{layerSizes.reduce((a, b) => a + b, 0)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Connections</p>
+              <p className="text-lg font-bold text-yellow-400">
+                {layerSizes.slice(0, -1).reduce((acc, curr, i) => acc + curr * layerSizes[i + 1], 0)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Layers</p>
+              <p className="text-lg font-bold text-yellow-400">{layerSizes.length}</p>
+            </div>
+            <div>
+              <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Tokens</p>
+              <p className="text-lg font-bold text-cyan-400">{tokenCount}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Connections</p>
-            <p className="text-lg font-bold text-yellow-400">
-              {layerSizes.slice(0, -1).reduce((acc, curr, i) => acc + curr * layerSizes[i + 1], 0)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Layers</p>
-            <p className="text-lg font-bold text-yellow-400">{layerSizes.length}</p>
-          </div>
-          <div>
-            <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Tokens</p>
-            <p className="text-lg font-bold text-cyan-400">{tokenCount}</p>
-          </div>
+          
+          {/* Edit Button */}
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/20 rounded text-foreground/80 hover:text-foreground transition-colors"
+          >
+            {isEditing ? "Cancel" : "Edit"}
+          </button>
         </div>
         
         {/* Architecture Display */}
