@@ -799,7 +799,11 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
       <canvas ref={canvasRef} className="w-full h-full" />
 
       {/* Info Panel */}
-      <div className="absolute bottom-6 left-6 right-6 bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm">
+      <div 
+        className="absolute bottom-6 left-6 right-6 bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm"
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start gap-3">
           {/* Stats Grid */}
           <div className="flex-1 grid grid-cols-4 gap-3">
@@ -934,7 +938,11 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
       </div>
 
       {/* Zoom Controls */}
-      <div className="absolute top-6 left-6 bg-white/5 border border-white/10 rounded-lg p-2 backdrop-blur-sm flex flex-col gap-2">
+      <div 
+        className="absolute top-6 left-6 bg-white/5 border border-white/10 rounded-lg p-2 backdrop-blur-sm flex flex-col gap-2"
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
         <button
           onClick={handleZoomIn}
           className="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded text-foreground transition-colors text-sm font-bold"
@@ -962,7 +970,11 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
       </div>
 
       {/* Controls Legend */}
-      <div className="absolute top-6 right-6 bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm max-w-xs">
+      <div 
+        className="absolute top-6 right-6 bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm max-w-xs"
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
         <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Neural Network</p>
         <div className="space-y-1 text-xs text-foreground/60">
           <p>• Drag to rotate 3D view</p>
