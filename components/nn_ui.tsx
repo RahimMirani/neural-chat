@@ -64,11 +64,13 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
   // Edit mode temporary values
   const [editNodes, setEditNodes] = useState(48) // Total nodes
   const [editLayers, setEditLayers] = useState(6)
+  const [editSpeed, setEditSpeed] = useState<"slow" | "fast">("slow")
   
   // Handle entering edit mode - initialize with current values
   const handleStartEdit = () => {
     setEditNodes(layerSizes.reduce((a, b) => a + b, 0))
     setEditLayers(layerSizes.length)
+    setEditSpeed(pulseSpeed > 100 ? "slow" : "fast")
     setIsEditing(true)
   }
   
@@ -824,8 +826,39 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
         
         {/* Architecture Display */}
         <div className="mt-2 pt-2 border-t border-white/10">
-          <p className="text-xs text-foreground/50 mb-1">Architecture</p>
-          <p className="text-xs font-mono text-yellow-400/80">{layerSizes.join(" → ")}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-foreground/50 mb-1">Architecture</p>
+              <p className="text-xs font-mono text-yellow-400/80">{layerSizes.join(" → ")}</p>
+            </div>
+            
+            {/* Speed Toggle - only visible in edit mode */}
+            {isEditing && (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-foreground/50 mr-2">Speed</span>
+                <button
+                  onClick={() => setEditSpeed("slow")}
+                  className={`px-2 py-1 text-xs rounded-l border transition-colors ${
+                    editSpeed === "slow"
+                      ? "bg-cyan-400/20 border-cyan-400/50 text-cyan-400"
+                      : "bg-white/5 border-white/20 text-foreground/50 hover:bg-white/10"
+                  }`}
+                >
+                  Slow
+                </button>
+                <button
+                  onClick={() => setEditSpeed("fast")}
+                  className={`px-2 py-1 text-xs rounded-r border-t border-r border-b transition-colors ${
+                    editSpeed === "fast"
+                      ? "bg-cyan-400/20 border-cyan-400/50 text-cyan-400"
+                      : "bg-white/5 border-white/20 text-foreground/50 hover:bg-white/10"
+                  }`}
+                >
+                  Fast
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         
         <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between">
