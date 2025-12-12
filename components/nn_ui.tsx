@@ -56,16 +56,45 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
   
   // Forward propagation state
   const propagationStepRef = useRef(0)
-  const layerSizesRef = useRef<number[]>([5, 8, 12, 10, 8, 5])
+  
+  // Network architecture state - user configurable
+  const [numLayers, setNumLayers] = useState(6)
+  const [nodesPerLayer, setNodesPerLayer] = useState(8)
+  const [layerSizes, setLayerSizes] = useState<number[]>([5, 8, 12, 10, 8, 5])
+  const [showControls, setShowControls] = useState(false)
+  
+  // Pulse speed control (frames per pulse cycle - higher = slower)
+  const [pulseSpeed, setPulseSpeed] = useState(120) // Slowed down from 60
   
   // Token pulse state for dramatic per-token visualization
   const tokenPulsesRef = useRef<TokenPulse[]>([])
   const lastTokenIdRef = useRef<number>(0)
   const [tokenCount, setTokenCount] = useState(0)
 
-  // Initialize neural network
+  // Generate layer sizes based on user config
+  const generateLayerSizes = (layers: number, baseNodes: number): number[] => {
+    const sizes: number[] = []
+    const mid = Math.floor(layers / 2)
+    
+    for (let i = 0; i < layers; i++) {
+      // Create a pyramid shape - smaller at edges, larger in middle
+      const distFromMid = Math.abs(i - mid)
+      const scale = 1 + (mid - distFromMid) * 0.4
+      const size = Math.max(3, Math.round(baseNodes * scale))
+      sizes.push(size)
+    }
+    
+    return sizes
+  }
+
+  // Update layer sizes when user changes config
+  const handleApplyConfig = () => {
+    const newSizes = generateLayerSizes(numLayers, nodesPerLayer)
+    setLayerSizes(newSizes)
+  }
+
+  // Initialize neural network - rebuilds when layerSizes changes
   useEffect(() => {
-    const layerSizes = layerSizesRef.current
     const newNodes: Node[] = []
     let nodeId = 0
 
@@ -111,13 +140,15 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
 
     nodesRef.current = newNodes
     connectionsRef.current = newConnections
-  }, [])
+    
+    // Clear any active pulses when network changes
+    tokenPulsesRef.current = []
+  }, [layerSizes])
 
   // Forward propagation algorithm - simulates actual neural network computation
   const performForwardPropagation = () => {
     const nodes = nodesRef.current
     const connections = connectionsRef.current
-    const layerSizes = layerSizesRef.current
     
     // Reset signal flow
     connections.forEach(conn => {
@@ -195,9 +226,6 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
     if (tokenEvent && tokenEvent.id !== lastTokenIdRef.current) {
       lastTokenIdRef.current = tokenEvent.id
       setTokenCount(prev => prev + 1)
-      
-      const nodes = nodesRef.current
-      const layerSizes = layerSizesRef.current
       
       // Generate a unique color based on token hash for variety
       const tokenHash = tokenEvent.token.split('').reduce((a, b) => {
@@ -527,9 +555,10 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
 
       // Update and clean token pulses
       const currentTime = timeRef.current
+      const pulseDuration = pulseSpeed // Use configurable pulse speed
       tokenPulsesRef.current = tokenPulsesRef.current.filter(pulse => {
         const age = currentTime - pulse.startTime
-        return age < 60 // Pulses last 60 frames
+        return age < pulseDuration // Pulses last pulseDuration frames
       })
 
       // Draw connections with signal flow
@@ -556,9 +585,9 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
         tokenPulsesRef.current.forEach(pulse => {
           if (pulse.sourceNodes.includes(conn.fromId)) {
             const age = currentTime - pulse.startTime
-            const progress = age / 60
+            const progress = age / pulseDuration
             // Only boost connections in the appropriate layer based on pulse progress
-            const targetLayer = Math.floor(progress * layerSizesRef.current.length)
+            const targetLayer = Math.floor(progress * layerSizes.length)
             if (fromNode.layer === targetLayer || fromNode.layer === targetLayer - 1) {
               pulseBoost = Math.max(pulseBoost, (1 - progress) * 0.8)
               pulseColor = pulse.color
@@ -604,7 +633,7 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
       // Draw token pulse shockwaves emanating from source nodes
       tokenPulsesRef.current.forEach(pulse => {
         const age = currentTime - pulse.startTime
-        const progress = age / 60
+        const progress = age / pulseDuration
         const waveRadius = progress * 300 * zoom
         const waveOpacity = (1 - progress) * 0.3
         
@@ -645,14 +674,14 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
         let nodePulseColor = ""
         tokenPulsesRef.current.forEach(pulse => {
           const age = currentTime - pulse.startTime
-          const progress = age / 60
-          const targetLayer = Math.floor(progress * layerSizesRef.current.length)
+          const progress = age / pulseDuration
+          const targetLayer = Math.floor(progress * layerSizes.length)
           
           // Boost nodes in the layer the pulse is currently passing through
           if (node.layer === targetLayer || node.layer === targetLayer + 1) {
             if (pulse.sourceNodes.includes(node.id) || 
-                (node.layer > 0 && progress > node.layer / layerSizesRef.current.length)) {
-              const layerProgress = (progress * layerSizesRef.current.length) - node.layer
+                (node.layer > 0 && progress > node.layer / layerSizes.length)) {
+              const layerProgress = (progress * layerSizes.length) - node.layer
               const boost = Math.max(0, 1 - Math.abs(layerProgress)) * 0.8
               if (boost > nodePulseBoost) {
                 nodePulseBoost = boost
@@ -704,7 +733,7 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
         ctx.fill()
 
         // Layer indicator - enhanced for input/output
-        if (node.layer === 0 || node.layer === layerSizesRef.current.length - 1) {
+        if (node.layer === 0 || node.layer === layerSizes.length - 1) {
           const indicatorColor = nodePulseBoost > 0.1 && nodePulseColor 
             ? nodePulseColor 
             : `rgba(250, 204, 21, ${0.5 + effectiveActivation * 0.5})`
@@ -727,7 +756,7 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [rotationX, rotationY, zoom, panOffset, isProcessing])
+  }, [rotationX, rotationY, zoom, panOffset, isProcessing, pulseSpeed, layerSizes])
 
   return (
     <div 
@@ -749,21 +778,30 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
         <div className="grid grid-cols-4 gap-3">
           <div>
             <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Nodes</p>
-            <p className="text-lg font-bold text-yellow-400">{nodesRef.current.length}</p>
+            <p className="text-lg font-bold text-yellow-400">{layerSizes.reduce((a, b) => a + b, 0)}</p>
           </div>
           <div>
             <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Connections</p>
-            <p className="text-lg font-bold text-yellow-400">{connectionsRef.current.length}</p>
+            <p className="text-lg font-bold text-yellow-400">
+              {layerSizes.slice(0, -1).reduce((acc, curr, i) => acc + curr * layerSizes[i + 1], 0)}
+            </p>
           </div>
           <div>
             <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Layers</p>
-            <p className="text-lg font-bold text-yellow-400">{layerSizesRef.current.length}</p>
+            <p className="text-lg font-bold text-yellow-400">{layerSizes.length}</p>
           </div>
           <div>
             <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Tokens</p>
             <p className="text-lg font-bold text-cyan-400">{tokenCount}</p>
           </div>
         </div>
+        
+        {/* Architecture Display */}
+        <div className="mt-2 pt-2 border-t border-white/10">
+          <p className="text-xs text-foreground/50 mb-1">Architecture</p>
+          <p className="text-xs font-mono text-yellow-400/80">{layerSizes.join(" → ")}</p>
+        </div>
+        
         <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between">
           <p className="text-xs text-foreground/50">
             {isProcessing ? "🔴 Processing..." : "🟢 Idle"}
@@ -806,16 +844,93 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
 
       {/* Controls Legend */}
       <div className="absolute top-6 right-6 bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm max-w-xs">
-        <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Neural Network</p>
-        <div className="space-y-1 text-xs text-foreground/60">
-          <p>• Drag to rotate 3D view</p>
-          <p>• Scroll to zoom (towards cursor)</p>
-          <p>• Click nodes to drag them</p>
-          <p>• Green = positive weights</p>
-          <p>• Red = negative weights</p>
-          <p>• Colored pulses = token streaming</p>
-          <p>• Rings = signal propagation</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Neural Network</p>
+          <button
+            onClick={() => setShowControls(!showControls)}
+            className="text-xs px-2 py-1 bg-yellow-400/20 hover:bg-yellow-400/30 border border-yellow-400/40 rounded text-yellow-400 transition-colors"
+          >
+            {showControls ? "Hide" : "Configure"}
+          </button>
         </div>
+        
+        {showControls ? (
+          <div className="space-y-4 pt-2 border-t border-white/10">
+            {/* Layers Slider */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs text-foreground/70">Layers</label>
+                <span className="text-xs font-mono text-yellow-400">{numLayers}</span>
+              </div>
+              <input
+                type="range"
+                min="3"
+                max="10"
+                value={numLayers}
+                onChange={(e) => setNumLayers(parseInt(e.target.value))}
+                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-yellow-400"
+              />
+            </div>
+            
+            {/* Nodes per Layer Slider */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs text-foreground/70">Nodes/Layer</label>
+                <span className="text-xs font-mono text-yellow-400">{nodesPerLayer}</span>
+              </div>
+              <input
+                type="range"
+                min="3"
+                max="16"
+                value={nodesPerLayer}
+                onChange={(e) => setNodesPerLayer(parseInt(e.target.value))}
+                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-yellow-400"
+              />
+            </div>
+            
+            {/* Pulse Speed Slider */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs text-foreground/70">Pulse Speed</label>
+                <span className="text-xs font-mono text-cyan-400">{pulseSpeed > 100 ? "Slow" : pulseSpeed > 60 ? "Medium" : "Fast"}</span>
+              </div>
+              <input
+                type="range"
+                min="40"
+                max="200"
+                value={pulseSpeed}
+                onChange={(e) => setPulseSpeed(parseInt(e.target.value))}
+                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+            </div>
+            
+            {/* Apply Button */}
+            <button
+              onClick={handleApplyConfig}
+              className="w-full py-2 bg-yellow-400 hover:bg-yellow-500 text-black text-xs font-semibold rounded transition-colors"
+            >
+              Rebuild Network
+            </button>
+            
+            {/* Preview */}
+            <div className="pt-2 border-t border-white/10">
+              <p className="text-xs text-foreground/50 mb-1">Preview Architecture:</p>
+              <p className="text-xs font-mono text-foreground/70">
+                {generateLayerSizes(numLayers, nodesPerLayer).join(" → ")}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1 text-xs text-foreground/60">
+            <p>• Drag to rotate 3D view</p>
+            <p>• Scroll to zoom (towards cursor)</p>
+            <p>• Click nodes to drag them</p>
+            <p>• Green = positive weights</p>
+            <p>• Red = negative weights</p>
+            <p>• Colored pulses = token streaming</p>
+            <p>• Rings = signal propagation</p>
+          </div>
+        )}
       </div>
     </div>
   )
