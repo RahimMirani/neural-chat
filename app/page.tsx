@@ -1,11 +1,12 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useCallback } from "react"
 import { ChatInterface } from "../components/chat_ui"
 import { NeuralNetworkVisualization } from "../components/nn_ui"
 
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)
+  const [tokenEvent, setTokenEvent] = useState<{ id: number; token: string } | null>(null)
   const [chatWidth, setChatWidth] = useState(30)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -30,6 +31,11 @@ export default function Home() {
     }
   }
 
+  // Handle new token events from chat
+  const handleTokenReceived = useCallback((token: string) => {
+    setTokenEvent({ id: Date.now(), token })
+  }, [])
+
   return (
     <div
       id="main-container"
@@ -41,7 +47,10 @@ export default function Home() {
       <div className="flex h-full">
         {/* Left Panel - Chat (30% default, resizable) */}
         <div style={{ width: `${chatWidth}%` }} className="flex flex-col border-r border-border/50">
-          <ChatInterface onProcessingChange={setIsProcessing} />
+          <ChatInterface 
+            onProcessingChange={setIsProcessing} 
+            onTokenReceived={handleTokenReceived}
+          />
         </div>
 
         {/* Resizable Divider */}
@@ -53,7 +62,10 @@ export default function Home() {
 
         {/* Right Panel - Neural Network Visualization (70% default, resizable) */}
         <div style={{ width: `${100 - chatWidth}%` }} className="flex flex-col bg-background">
-          <NeuralNetworkVisualization isProcessing={isProcessing} />
+          <NeuralNetworkVisualization 
+            isProcessing={isProcessing} 
+            tokenEvent={tokenEvent}
+          />
         </div>
       </div>
     </div>

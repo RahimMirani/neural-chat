@@ -10,9 +10,10 @@ import { Send, Zap, Sparkles, Brain } from "lucide-react"
 
 interface ChatInterfaceProps {
   onProcessingChange: (isProcessing: boolean) => void
+  onTokenReceived?: (token: string) => void
 }
 
-export function ChatInterface({ onProcessingChange }: ChatInterfaceProps) {
+export function ChatInterface({ onProcessingChange, onTokenReceived }: ChatInterfaceProps) {
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   })
@@ -20,6 +21,7 @@ export function ChatInterface({ onProcessingChange }: ChatInterfaceProps) {
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const lastContentLengthRef = useRef(0)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -28,6 +30,34 @@ export function ChatInterface({ onProcessingChange }: ChatInterfaceProps) {
   useEffect(() => {
     onProcessingChange(status === "submitted" || status === "streaming")
   }, [status, onProcessingChange])
+
+  // Detect new tokens by watching message content changes during streaming
+  useEffect(() => {
+    if (status === "streaming" && messages.length > 0 && onTokenReceived) {
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage.role === "assistant") {
+        // Get the current content length
+        const currentContent = lastMessage.parts
+          .filter(part => part.type === "text")
+          .map(part => (part as { type: "text"; text: string }).text)
+          .join("")
+        
+        const currentLength = currentContent.length
+        
+        // If content grew, we received new tokens
+        if (currentLength > lastContentLengthRef.current) {
+          const newContent = currentContent.slice(lastContentLengthRef.current)
+          // Emit token event for each character chunk (simulating tokens)
+          onTokenReceived(newContent)
+        }
+        
+        lastContentLengthRef.current = currentLength
+      }
+    } else if (status !== "streaming") {
+      // Reset when not streaming
+      lastContentLengthRef.current = 0
+    }
+  }, [messages, status, onTokenReceived])
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()

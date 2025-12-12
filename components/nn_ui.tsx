@@ -23,9 +23,18 @@ interface Connection {
 
 interface NeuralNetworkVisualizationProps {
   isProcessing: boolean
+  tokenEvent?: { id: number; token: string } | null
 }
 
-export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisualizationProps) {
+interface TokenPulse {
+  id: number
+  startTime: number
+  intensity: number
+  sourceNodes: string[]
+  color: string
+}
+
+export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralNetworkVisualizationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const nodesRef = useRef<Node[]>([])
@@ -48,6 +57,11 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
   // Forward propagation state
   const propagationStepRef = useRef(0)
   const layerSizesRef = useRef<number[]>([5, 8, 12, 10, 8, 5])
+  
+  // Token pulse state for dramatic per-token visualization
+  const tokenPulsesRef = useRef<TokenPulse[]>([])
+  const lastTokenIdRef = useRef<number>(0)
+  const [tokenCount, setTokenCount] = useState(0)
 
   // Initialize neural network
   useEffect(() => {
@@ -147,6 +161,11 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
   useEffect(() => {
     if (isProcessing) {
       propagationStepRef.current = 0
+      // Reset token count for new response
+      setTokenCount(0)
+      lastTokenIdRef.current = 0
+      tokenPulsesRef.current = []
+      
       // Perform forward propagation multiple times during processing
       const propagationInterval = setInterval(() => {
         performForwardPropagation()
@@ -170,6 +189,72 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
       return () => clearInterval(decayInterval)
     }
   }, [isProcessing])
+
+  // Handle token pulse events - creates dramatic burst for each token
+  useEffect(() => {
+    if (tokenEvent && tokenEvent.id !== lastTokenIdRef.current) {
+      lastTokenIdRef.current = tokenEvent.id
+      setTokenCount(prev => prev + 1)
+      
+      const nodes = nodesRef.current
+      const layerSizes = layerSizesRef.current
+      
+      // Generate a unique color based on token hash for variety
+      const tokenHash = tokenEvent.token.split('').reduce((a, b) => {
+        return a + b.charCodeAt(0)
+      }, 0)
+      
+      const hue = (tokenHash * 37) % 360
+      const colors = [
+        `hsl(${hue}, 90%, 60%)`,
+        `hsl(${(hue + 120) % 360}, 85%, 55%)`,
+        `hsl(${(hue + 240) % 360}, 80%, 65%)`,
+      ]
+      const pulseColor = colors[tokenCount % colors.length]
+      
+      // Select random input nodes to be the source of this token's pulse
+      const inputLayerEnd = layerSizes[0]
+      const numSourceNodes = Math.min(3, inputLayerEnd)
+      const sourceNodeIndices: number[] = []
+      
+      for (let i = 0; i < numSourceNodes; i++) {
+        let idx: number
+        do {
+          idx = Math.floor(Math.random() * inputLayerEnd)
+        } while (sourceNodeIndices.includes(idx))
+        sourceNodeIndices.push(idx)
+      }
+      
+      const sourceNodes = sourceNodeIndices.map(i => `node-${i}`)
+      
+      // Boost activation of source nodes
+      nodesRef.current = nodesRef.current.map(node => {
+        if (sourceNodes.includes(node.id)) {
+          return { ...node, activation: Math.min(1, node.activation + 0.8) }
+        }
+        return node
+      })
+      
+      // Create the pulse
+      const newPulse: TokenPulse = {
+        id: tokenEvent.id,
+        startTime: timeRef.current,
+        intensity: 1,
+        sourceNodes,
+        color: pulseColor,
+      }
+      
+      tokenPulsesRef.current = [...tokenPulsesRef.current, newPulse]
+      
+      // Trigger a forward propagation for this token
+      performForwardPropagation()
+      
+      // Clean up old pulses (keep last 10)
+      if (tokenPulsesRef.current.length > 10) {
+        tokenPulsesRef.current = tokenPulsesRef.current.slice(-10)
+      }
+    }
+  }, [tokenEvent])
 
   // Mouse/touch handlers for 3D rotation
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -440,6 +525,13 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
         return posA.z - posB.z
       })
 
+      // Update and clean token pulses
+      const currentTime = timeRef.current
+      tokenPulsesRef.current = tokenPulsesRef.current.filter(pulse => {
+        const age = currentTime - pulse.startTime
+        return age < 60 // Pulses last 60 frames
+      })
+
       // Draw connections with signal flow
       sortedConnections.forEach((conn) => {
         const fromNode = nodes.find((n) => n.id === conn.fromId)
@@ -458,15 +550,35 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
         const x2 = canvas.width / 2 + panOffset.x + toPos.x * scale2
         const y2 = canvas.height / 2 + panOffset.y + toPos.y * scale2
 
-        // Draw connection with signal flow
-        const signalStrength = conn.signalFlow
-        const weightStrength = Math.abs(conn.weight)
-        const opacity = 0.05 + signalStrength * 0.4 + weightStrength * 0.1
-        const lineWidth = 0.5 + signalStrength * 2 + weightStrength * 0.5
+        // Check if this connection is part of an active token pulse
+        let pulseBoost = 0
+        let pulseColor = ""
+        tokenPulsesRef.current.forEach(pulse => {
+          if (pulse.sourceNodes.includes(conn.fromId)) {
+            const age = currentTime - pulse.startTime
+            const progress = age / 60
+            // Only boost connections in the appropriate layer based on pulse progress
+            const targetLayer = Math.floor(progress * layerSizesRef.current.length)
+            if (fromNode.layer === targetLayer || fromNode.layer === targetLayer - 1) {
+              pulseBoost = Math.max(pulseBoost, (1 - progress) * 0.8)
+              pulseColor = pulse.color
+            }
+          }
+        })
 
-        ctx.strokeStyle = conn.weight > 0 
-          ? `rgba(34, 197, 94, ${opacity})` // Green for positive weights
-          : `rgba(239, 68, 68, ${opacity})` // Red for negative weights
+        // Draw connection with signal flow
+        const signalStrength = conn.signalFlow + pulseBoost
+        const weightStrength = Math.abs(conn.weight)
+        const opacity = 0.05 + signalStrength * 0.5 + weightStrength * 0.1
+        const lineWidth = 0.5 + signalStrength * 3 + weightStrength * 0.5
+
+        if (pulseBoost > 0.1 && pulseColor) {
+          ctx.strokeStyle = pulseColor.replace(')', `, ${opacity})`).replace('hsl', 'hsla')
+        } else {
+          ctx.strokeStyle = conn.weight > 0 
+            ? `rgba(34, 197, 94, ${opacity})` // Green for positive weights
+            : `rgba(239, 68, 68, ${opacity})` // Red for negative weights
+        }
         ctx.lineWidth = lineWidth
 
         ctx.beginPath()
@@ -479,12 +591,39 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
           const pulsePhase = (timeRef.current % 20) / 20
           const pulseX = x1 + (x2 - x1) * pulsePhase
           const pulseY = y1 + (y2 - y1) * pulsePhase
+          
+          const pulseSize = 3 + pulseBoost * 5
 
-          ctx.fillStyle = `rgba(250, 204, 21, ${signalStrength * 0.8})`
+          ctx.fillStyle = pulseColor || `rgba(250, 204, 21, ${signalStrength * 0.8})`
           ctx.beginPath()
-          ctx.arc(pulseX, pulseY, 3 * signalStrength, 0, Math.PI * 2)
+          ctx.arc(pulseX, pulseY, pulseSize * signalStrength, 0, Math.PI * 2)
           ctx.fill()
         }
+      })
+
+      // Draw token pulse shockwaves emanating from source nodes
+      tokenPulsesRef.current.forEach(pulse => {
+        const age = currentTime - pulse.startTime
+        const progress = age / 60
+        const waveRadius = progress * 300 * zoom
+        const waveOpacity = (1 - progress) * 0.3
+        
+        pulse.sourceNodes.forEach(nodeId => {
+          const node = nodes.find(n => n.id === nodeId)
+          if (!node) return
+          
+          const pos = rotate3D(node.x, node.y, node.z)
+          const scale = (focalLength / (focalLength + pos.z)) * zoom
+          const x = canvas.width / 2 + panOffset.x + pos.x * scale
+          const y = canvas.height / 2 + panOffset.y + pos.y * scale
+          
+          // Draw expanding ring
+          ctx.strokeStyle = pulse.color.replace(')', `, ${waveOpacity})`).replace('hsl', 'hsla')
+          ctx.lineWidth = 2 + (1 - progress) * 3
+          ctx.beginPath()
+          ctx.arc(x, y, waveRadius, 0, Math.PI * 2)
+          ctx.stroke()
+        })
       })
 
       // Sort nodes by depth
@@ -501,40 +640,78 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
         const x = canvas.width / 2 + panOffset.x + pos.x * scale
         const y = canvas.height / 2 + panOffset.y + pos.y * scale
 
-        const radius = 3 + node.activation * 6
-        const glowRadius = radius + 4 + node.activation * 8
+        // Check if this node is part of an active token pulse
+        let nodePulseBoost = 0
+        let nodePulseColor = ""
+        tokenPulsesRef.current.forEach(pulse => {
+          const age = currentTime - pulse.startTime
+          const progress = age / 60
+          const targetLayer = Math.floor(progress * layerSizesRef.current.length)
+          
+          // Boost nodes in the layer the pulse is currently passing through
+          if (node.layer === targetLayer || node.layer === targetLayer + 1) {
+            if (pulse.sourceNodes.includes(node.id) || 
+                (node.layer > 0 && progress > node.layer / layerSizesRef.current.length)) {
+              const layerProgress = (progress * layerSizesRef.current.length) - node.layer
+              const boost = Math.max(0, 1 - Math.abs(layerProgress)) * 0.8
+              if (boost > nodePulseBoost) {
+                nodePulseBoost = boost
+                nodePulseColor = pulse.color
+              }
+            }
+          }
+        })
 
-        // Glow effect
+        const effectiveActivation = Math.min(1, node.activation + nodePulseBoost)
+        const radius = 3 + effectiveActivation * 8
+        const glowRadius = radius + 6 + effectiveActivation * 12
+
+        // Glow effect - enhanced when part of pulse
         const gradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius)
-        gradient.addColorStop(0, `rgba(250, 204, 21, ${0.3 * node.activation})`)
-        gradient.addColorStop(0.5, `rgba(250, 204, 21, ${0.1 * node.activation})`)
-        gradient.addColorStop(1, "rgba(250, 204, 21, 0)")
+        if (nodePulseBoost > 0.1 && nodePulseColor) {
+          // Use pulse color for glow
+          gradient.addColorStop(0, nodePulseColor.replace(')', `, ${0.6 * effectiveActivation})`).replace('hsl', 'hsla'))
+          gradient.addColorStop(0.4, nodePulseColor.replace(')', `, ${0.3 * effectiveActivation})`).replace('hsl', 'hsla'))
+          gradient.addColorStop(1, "rgba(0, 0, 0, 0)")
+        } else {
+          gradient.addColorStop(0, `rgba(250, 204, 21, ${0.4 * effectiveActivation})`)
+          gradient.addColorStop(0.5, `rgba(250, 204, 21, ${0.15 * effectiveActivation})`)
+          gradient.addColorStop(1, "rgba(250, 204, 21, 0)")
+        }
         ctx.fillStyle = gradient
         ctx.beginPath()
         ctx.arc(x, y, glowRadius, 0, Math.PI * 2)
         ctx.fill()
 
-        // Core node
-        const nodeColor = node.activation > 0.5 
-          ? `rgba(34, 197, 94, ${0.8 + node.activation * 0.2})` // Green for high activation
-          : `rgba(250, 204, 21, ${0.6 + node.activation * 0.4})` // Yellow for medium
+        // Core node - enhanced coloring
+        let nodeColor: string
+        if (nodePulseBoost > 0.2 && nodePulseColor) {
+          nodeColor = nodePulseColor
+        } else if (effectiveActivation > 0.5) {
+          nodeColor = `rgba(34, 197, 94, ${0.8 + effectiveActivation * 0.2})` // Green for high activation
+        } else {
+          nodeColor = `rgba(250, 204, 21, ${0.6 + effectiveActivation * 0.4})` // Yellow for medium
+        }
         ctx.fillStyle = nodeColor
         ctx.beginPath()
         ctx.arc(x, y, radius, 0, Math.PI * 2)
         ctx.fill()
 
         // Highlight
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * node.activation})`
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + 0.5 * effectiveActivation})`
         ctx.beginPath()
-        ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.4, 0, Math.PI * 2)
+        ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.35, 0, Math.PI * 2)
         ctx.fill()
 
-        // Layer indicator
+        // Layer indicator - enhanced for input/output
         if (node.layer === 0 || node.layer === layerSizesRef.current.length - 1) {
-          ctx.strokeStyle = `rgba(250, 204, 21, ${0.5 + node.activation * 0.5})`
-          ctx.lineWidth = 2
+          const indicatorColor = nodePulseBoost > 0.1 && nodePulseColor 
+            ? nodePulseColor 
+            : `rgba(250, 204, 21, ${0.5 + effectiveActivation * 0.5})`
+          ctx.strokeStyle = indicatorColor
+          ctx.lineWidth = 2 + nodePulseBoost * 2
           ctx.beginPath()
-          ctx.arc(x, y, radius + 2, 0, Math.PI * 2)
+          ctx.arc(x, y, radius + 3, 0, Math.PI * 2)
           ctx.stroke()
         }
       })
@@ -569,7 +746,7 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
 
       {/* Info Panel */}
       <div className="absolute bottom-6 left-6 right-6 bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           <div>
             <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Nodes</p>
             <p className="text-lg font-bold text-yellow-400">{nodesRef.current.length}</p>
@@ -582,11 +759,20 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
             <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Layers</p>
             <p className="text-lg font-bold text-yellow-400">{layerSizesRef.current.length}</p>
           </div>
+          <div>
+            <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Tokens</p>
+            <p className="text-lg font-bold text-cyan-400">{tokenCount}</p>
+          </div>
         </div>
-        <div className="mt-2 pt-2 border-t border-white/10">
+        <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between">
           <p className="text-xs text-foreground/50">
             {isProcessing ? "🔴 Processing..." : "🟢 Idle"}
           </p>
+          {isProcessing && (
+            <p className="text-xs text-cyan-400 animate-pulse">
+              ⚡ Streaming tokens...
+            </p>
+          )}
         </div>
       </div>
 
@@ -627,7 +813,8 @@ export function NeuralNetworkVisualization({ isProcessing }: NeuralNetworkVisual
           <p>• Click nodes to drag them</p>
           <p>• Green = positive weights</p>
           <p>• Red = negative weights</p>
-          <p>• Brightness = activation level</p>
+          <p>• Colored pulses = token streaming</p>
+          <p>• Rings = signal propagation</p>
         </div>
       </div>
     </div>
