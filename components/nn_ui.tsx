@@ -61,6 +61,22 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
   const [layerSizes, setLayerSizes] = useState<number[]>([5, 8, 12, 10, 8, 5])
   const [isEditing, setIsEditing] = useState(false)
   
+  // Edit mode temporary values
+  const [editNodes, setEditNodes] = useState(48) // Total nodes
+  const [editLayers, setEditLayers] = useState(6)
+  
+  // Handle entering edit mode - initialize with current values
+  const handleStartEdit = () => {
+    setEditNodes(layerSizes.reduce((a, b) => a + b, 0))
+    setEditLayers(layerSizes.length)
+    setIsEditing(true)
+  }
+  
+  // Handle canceling edit mode
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+  }
+  
   // Pulse speed control (frames per pulse cycle - higher = slower)
   const [pulseSpeed, setPulseSpeed] = useState(120) // Slowed down from 60
   
@@ -757,17 +773,39 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
           <div className="flex-1 grid grid-cols-4 gap-3">
             <div>
               <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Nodes</p>
-              <p className="text-lg font-bold text-yellow-400">{layerSizes.reduce((a, b) => a + b, 0)}</p>
+              {isEditing ? (
+                <input
+                  type="number"
+                  min="6"
+                  max="200"
+                  value={editNodes}
+                  onChange={(e) => setEditNodes(Math.max(6, Math.min(200, parseInt(e.target.value) || 6)))}
+                  className="w-16 text-lg font-bold text-yellow-400 bg-white/10 border border-yellow-400/50 rounded px-2 py-0.5 focus:outline-none focus:border-yellow-400"
+                />
+              ) : (
+                <p className="text-lg font-bold text-yellow-400">{layerSizes.reduce((a, b) => a + b, 0)}</p>
+              )}
             </div>
             <div>
               <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Connections</p>
-              <p className="text-lg font-bold text-yellow-400">
-                {layerSizes.slice(0, -1).reduce((acc, curr, i) => acc + curr * layerSizes[i + 1], 0)}
+              <p className="text-lg font-bold text-yellow-400/60">
+                {isEditing ? "—" : layerSizes.slice(0, -1).reduce((acc, curr, i) => acc + curr * layerSizes[i + 1], 0)}
               </p>
             </div>
             <div>
               <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Layers</p>
-              <p className="text-lg font-bold text-yellow-400">{layerSizes.length}</p>
+              {isEditing ? (
+                <input
+                  type="number"
+                  min="2"
+                  max="12"
+                  value={editLayers}
+                  onChange={(e) => setEditLayers(Math.max(2, Math.min(12, parseInt(e.target.value) || 2)))}
+                  className="w-16 text-lg font-bold text-yellow-400 bg-white/10 border border-yellow-400/50 rounded px-2 py-0.5 focus:outline-none focus:border-yellow-400"
+                />
+              ) : (
+                <p className="text-lg font-bold text-yellow-400">{layerSizes.length}</p>
+              )}
             </div>
             <div>
               <p className="text-xs text-foreground/60 uppercase tracking-wide font-semibold">Tokens</p>
@@ -777,7 +815,7 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
           
           {/* Edit Button */}
           <button
-            onClick={() => setIsEditing(!isEditing)}
+            onClick={isEditing ? handleCancelEdit : handleStartEdit}
             className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/20 rounded text-foreground/80 hover:text-foreground transition-colors"
           >
             {isEditing ? "Cancel" : "Edit"}
