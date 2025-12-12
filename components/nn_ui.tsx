@@ -79,6 +79,36 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
     setIsEditing(false)
   }
   
+  // Handle applying configuration changes
+  const handleApplyConfig = () => {
+    // Generate layer sizes: distribute nodes across layers in a pyramid shape
+    const layers = editLayers
+    const totalNodes = editNodes
+    
+    // Calculate weights for pyramid distribution (middle layers get more nodes)
+    const weights: number[] = []
+    const mid = (layers - 1) / 2
+    for (let i = 0; i < layers; i++) {
+      const distFromMid = Math.abs(i - mid)
+      weights.push(1 + (mid - distFromMid) * 0.5)
+    }
+    const totalWeight = weights.reduce((a, b) => a + b, 0)
+    
+    // Distribute nodes based on weights
+    const newLayerSizes = weights.map(w => Math.max(3, Math.round((w / totalWeight) * totalNodes)))
+    
+    // Adjust to match exact total (add/remove from middle layer)
+    const currentTotal = newLayerSizes.reduce((a, b) => a + b, 0)
+    const diff = totalNodes - currentTotal
+    const midIndex = Math.floor(layers / 2)
+    newLayerSizes[midIndex] = Math.max(3, newLayerSizes[midIndex] + diff)
+    
+    // Apply changes
+    setLayerSizes(newLayerSizes)
+    setPulseSpeed(editSpeed === "slow" ? 150 : 60)
+    setIsEditing(false)
+  }
+  
   // Pulse speed control (frames per pulse cycle - higher = slower)
   const [pulseSpeed, setPulseSpeed] = useState(120) // Slowed down from 60
   
@@ -815,13 +845,30 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
             </div>
           </div>
           
-          {/* Edit Button */}
-          <button
-            onClick={isEditing ? handleCancelEdit : handleStartEdit}
-            className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/20 rounded text-foreground/80 hover:text-foreground transition-colors"
-          >
-            {isEditing ? "Cancel" : "Edit"}
-          </button>
+          {/* Edit/Apply/Cancel Buttons */}
+          {isEditing ? (
+            <div className="flex gap-2">
+              <button
+                onClick={handleCancelEdit}
+                className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/20 rounded text-foreground/80 hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApplyConfig}
+                className="px-3 py-1.5 text-xs bg-yellow-400 hover:bg-yellow-500 border border-yellow-400 rounded text-black font-semibold transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleStartEdit}
+              className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/20 rounded text-foreground/80 hover:text-foreground transition-colors"
+            >
+              Edit
+            </button>
+          )}
         </div>
         
         {/* Architecture Display */}
