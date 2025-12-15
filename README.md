@@ -1,6 +1,6 @@
 # Neural Chat
 
-An interactive AI chat application with real-time neural network visualization. Watch how neural networks process information as you chat with AI, featuring a fully interactive 3D neural network visualization that demonstrates forward propagation, signal flow, and network activations in real-time.
+An interactive AI chat application with real-time neural network visualization and an illustrative mode. Watch how neural networks process information as you chat with AI, featuring a fully interactive 3D neural network visualization that demonstrates forward propagation, signal flow, and network activations in real-time.
 
 ## Interactive Neural Network Visualization
 
@@ -17,6 +17,7 @@ An interactive AI chat application with real-time neural network visualization. 
   - Red connections represent negative weights
   - Node brightness indicates activation level
   - Animated signal pulses during processing
+- Illustrative Mode:
 
 ## Neural Network Explanation
 
