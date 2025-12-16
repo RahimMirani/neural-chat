@@ -939,7 +939,7 @@ export function NeuralNetworkVisualization({ isProcessing, tokenEvent }: NeuralN
 
       {/* Zoom Controls */}
       <div 
-        className="absolute top-6 left-6 bg-white/5 border border-white/10 rounded-lg p-2 backdrop-blur-sm flex flex-col gap-2"
+        className="absolute top-20 left-6 bg-white/5 border border-white/10 rounded-lg p-2 backdrop-blur-sm flex flex-col gap-2"
         onMouseDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
