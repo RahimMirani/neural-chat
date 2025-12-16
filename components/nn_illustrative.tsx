@@ -106,7 +106,7 @@ export function NeuralNetworkIllustrative() {
   return (
     <div 
       ref={containerRef} 
-      className="w-full h-full relative bg-white overflow-hidden"
+      className="w-full h-full relative bg-black overflow-hidden"
     >
       <canvas ref={canvasRef} className="block" />
     </div>
