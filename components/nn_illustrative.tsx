@@ -9,6 +9,13 @@ interface TooltipState {
   text: string
 }
 
+interface SelectedNodeState {
+  layer: number
+  index: number
+  x: number
+  y: number
+}
+
 interface NeuralNetworkIllustrativeProps {
   isProcessing: boolean
 }
@@ -17,10 +24,11 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const [selectedNode, setSelectedNode] = useState<SelectedNodeState | null>(null)
   
   // Animation state
   const timeRef = useRef(0)
-  const nodesRef = useRef<{x: number, y: number, r: number, layer: number}[]>([])
+  const nodesRef = useRef<{x: number, y: number, r: number, layer: number, index: number}[]>([])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -82,20 +90,12 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
             const nextY = (height / (nextLayerCount + 1)) * (j + 1)
             
             // IMPROVED WAVE LOGIC:
-            // The wave moves from 0 to (layers.length - 1). 
-            // We want it to loop every ~3 units of time.
             const cycleLength = 4 
             const normalizedTime = timeRef.current % cycleLength
             
-            // Connection is "active" if the wave is passing between its layers
-            // Connection is between layerIndex and layerIndex + 1
-            // So peak activity is at layerIndex + 0.5
             const connectionPos = layerIndex + 0.5
             const dist = Math.abs(normalizedTime - connectionPos)
-            
-            // Use a Gaussian-like curve for smooth fade in/out
-            const intensity = Math.max(0, 1 - (dist * 2)) // Sharpness of the pulse
-            
+            const intensity = Math.max(0, 1 - (dist * 2)) 
             const isActive = intensity > 0.1 && isProcessing
             
             // Connection style
@@ -129,7 +129,6 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
       layers.forEach((nodeCount, layerIndex) => {
         const x = layerGap * (layerIndex + 1)
         
-        // ... Layer Labels (unchanged) ...
         // Draw Layer Label
         ctx.fillStyle = "rgba(255, 255, 255, 0.8)"
         ctx.font = "bold 14px sans-serif"
@@ -186,18 +185,21 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
           const cycleLength = 4
           const normalizedTime = timeRef.current % cycleLength
           const dist = Math.abs(normalizedTime - layerIndex)
-          
-          // Activation logic: 
-          // If close to the wave front, light up.
           const activation = isProcessing ? Math.max(0, 1 - dist * 1.5) : 0
           
           // Store for hit testing
-          nodesRef.current.push({ x, y, r, layer: layerIndex })
+          nodesRef.current.push({ x, y, r, layer: layerIndex, index: i })
 
           // Glow effect
           const gradient = ctx.createRadialGradient(x, y, 0, x, y, r + 15)
-          if (activation > 0.1) {
-             gradient.addColorStop(0, `rgba(250, 204, 21, ${activation * 0.8})`) // Stronger glow
+          
+          // Check if selected
+          const isSelected = selectedNode?.layer === layerIndex && selectedNode?.index === i
+          
+          if (isSelected) {
+             gradient.addColorStop(0, "rgba(6, 182, 212, 0.6)") // Cyan selection glow
+          } else if (activation > 0.1) {
+             gradient.addColorStop(0, `rgba(250, 204, 21, ${activation * 0.8})`) // Active Yellow Glow
           } else {
              gradient.addColorStop(0, "rgba(255, 255, 255, 0.05)") 
           }
@@ -209,8 +211,14 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
           ctx.fill()
 
           // Node border
-          ctx.strokeStyle = activation > 0.3 ? "rgba(250, 204, 21, 1)" : "rgba(255, 255, 255, 0.3)"
-          ctx.lineWidth = activation > 0.3 ? 3 : 2
+          if (isSelected) {
+             ctx.strokeStyle = "rgba(6, 182, 212, 1)"
+             ctx.lineWidth = 3
+          } else {
+             ctx.strokeStyle = activation > 0.3 ? "rgba(250, 204, 21, 1)" : "rgba(255, 255, 255, 0.3)"
+             ctx.lineWidth = activation > 0.3 ? 3 : 2
+          }
+          
           ctx.beginPath()
           ctx.arc(x, y, r, 0, Math.PI * 2)
           ctx.stroke()
@@ -220,7 +228,7 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
           ctx.fill()
 
           // Educational: Show activation values (simulated)
-          ctx.fillStyle = activation > 0.3 ? "rgba(250, 204, 21, 1)" : "rgba(255, 255, 255, 0.5)"
+          ctx.fillStyle = activation > 0.3 || isSelected ? "rgba(255, 255, 255, 1)" : "rgba(255, 255, 255, 0.5)"
           ctx.font = "10px monospace"
           ctx.textAlign = "center"
           ctx.textBaseline = "middle"
@@ -241,7 +249,7 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
       window.removeEventListener("resize", resizeCanvas)
       cancelAnimationFrame(animationId)
     }
-  }, [isProcessing]) // Add isProcessing to dependency
+  }, [isProcessing, selectedNode]) // Add selectedNode to dependency
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const canvas = canvasRef.current
@@ -259,23 +267,56 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
     })
 
     if (hitNode) {
+      // Don't show tooltip if we have a selection panel open (to avoid clutter)
+      if (selectedNode) {
+        setTooltip(null)
+        return
+      }
+
       let title = "Neuron"
       let text = "A computational unit."
 
       if (hitNode.layer === 0) {
         title = "Input Neuron"
-        text = "Receives raw data (numbers) from your input text."
+        text = "Click to see input details."
       } else if (hitNode.layer === 1) {
         title = "Hidden Neuron"
-        text = "Processes combinations of inputs to find patterns."
+        text = "Click to see the math."
       } else {
         title = "Output Neuron"
-        text = "Produces the final probability for the next token."
+        text = "Click to see prediction math."
       }
 
       setTooltip({ x: mouseX + 20, y: mouseY, title, text })
     } else {
       setTooltip(null)
+    }
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
+
+    // Check nodes
+    const hitNode = nodesRef.current.find(node => {
+      const dx = mouseX - node.x
+      const dy = mouseY - node.y
+      return Math.sqrt(dx * dx + dy * dy) < node.r
+    })
+
+    if (hitNode) {
+        if (selectedNode?.layer === hitNode.layer && selectedNode?.index === hitNode.index) {
+            setSelectedNode(null) // Toggle off
+        } else {
+            setSelectedNode({ layer: hitNode.layer, index: hitNode.index, x: hitNode.x, y: hitNode.y })
+            setTooltip(null)
+        }
+    } else {
+        setSelectedNode(null) // Click background to close
     }
   }
 
@@ -289,9 +330,10 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
         className="block cursor-crosshair" 
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
+        onClick={handleClick}
       />
       
-      {tooltip && (
+      {tooltip && !selectedNode && (
         <div 
             style={{ left: tooltip.x, top: tooltip.y }}
             className="absolute bg-black/90 border border-yellow-400/30 p-3 rounded-lg shadow-xl backdrop-blur-md max-w-xs pointer-events-none z-50"
@@ -299,6 +341,69 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
             <h4 className="text-yellow-400 font-bold text-xs mb-1 uppercase tracking-wider">{tooltip.title}</h4>
             <p className="text-white/80 text-xs leading-relaxed">{tooltip.text}</p>
         </div>
+      )}
+
+      {selectedNode && (
+          <div 
+            className="absolute bottom-6 right-6 w-80 bg-black/90 border border-cyan-400/50 p-4 rounded-xl shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5 fade-in duration-300"
+          >
+              <div className="flex justify-between items-start mb-3">
+                  <h3 className="text-cyan-400 font-bold text-sm uppercase tracking-wider">
+                      {selectedNode.layer === 0 ? "Input Neuron" : selectedNode.layer === 1 ? "Hidden Neuron Math" : "Output Neuron Math"}
+                  </h3>
+                  <button 
+                    onClick={() => setSelectedNode(null)}
+                    className="text-white/40 hover:text-white"
+                  >
+                      ✕
+                  </button>
+              </div>
+
+              {selectedNode.layer === 0 ? (
+                  <div className="space-y-3">
+                      <p className="text-white/80 text-xs">This neuron represents a specific feature of your input text.</p>
+                      <div className="bg-white/5 p-2 rounded border border-white/10 font-mono text-xs text-yellow-400">
+                          Value = {Math.random().toFixed(2)}
+                      </div>
+                  </div>
+              ) : (
+                  <div className="space-y-3">
+                      <p className="text-white/60 text-xs mb-2">Each neuron sums up inputs from the previous layer, weighted by connection strength.</p>
+                      
+                      <div className="space-y-1 font-mono text-xs">
+                          <div className="flex justify-between text-white/40">
+                              <span>Weights (w)</span>
+                              <span>Inputs (x)</span>
+                          </div>
+                          <div className="flex justify-between text-white/80 border-b border-white/10 pb-1">
+                              <span>(0.5 × 0.2)</span>
+                              <span className="text-yellow-400">0.10</span>
+                          </div>
+                          <div className="flex justify-between text-white/80 border-b border-white/10 pb-1">
+                              <span>(0.8 × -0.1)</span>
+                              <span className="text-red-400">-0.08</span>
+                          </div>
+                          <div className="flex justify-between text-white/80 border-b border-white/10 pb-1">
+                              <span>(0.3 × 0.9)</span>
+                              <span className="text-yellow-400">0.27</span>
+                          </div>
+                          
+                          <div className="flex justify-between pt-2 font-bold">
+                              <span className="text-cyan-400">Sum + Bias</span>
+                              <span className="text-white">0.29</span>
+                          </div>
+                      </div>
+
+                      <div className="mt-2 pt-2 border-t border-white/10">
+                          <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Activation Function (ReLU)</p>
+                          <div className="flex items-center gap-2 bg-white/5 p-2 rounded">
+                              <span className="text-white/60">Math.max(0, 0.29) = </span>
+                              <span className="text-yellow-400 font-bold text-lg">0.29</span>
+                          </div>
+                      </div>
+                  </div>
+              )}
+          </div>
       )}
     </div>
   )
