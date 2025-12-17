@@ -40,6 +40,19 @@ export function NeuralNetworkIllustrative() {
       ctx.lineWidth = 2
 
       layers.forEach((nodeCount, layerIndex) => {
+        const x = layerGap * (layerIndex + 1)
+        
+        // Draw Layer Label
+        ctx.fillStyle = "rgba(255, 255, 255, 0.8)"
+        ctx.font = "bold 14px sans-serif"
+        ctx.textAlign = "center"
+        
+        let label = "Hidden Layer"
+        if (layerIndex === 0) label = "Input Layer"
+        if (layerIndex === layers.length - 1) label = "Output Layer"
+        
+        ctx.fillText(label, x, 50) // Top of canvas
+
         if (layerIndex >= layers.length - 1) return
 
         const nextLayerCount = layers[layerIndex + 1]
