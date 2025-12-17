@@ -46,12 +46,42 @@ export function NeuralNetworkIllustrative() {
         ctx.fillStyle = "rgba(255, 255, 255, 0.8)"
         ctx.font = "bold 14px sans-serif"
         ctx.textAlign = "center"
+        ctx.textBaseline = "alphabetic" // Reset baseline for standard text
         
         let label = "Hidden Layer"
         if (layerIndex === 0) label = "Input Layer"
         if (layerIndex === layers.length - 1) label = "Output Layer"
         
-        ctx.fillText(label, x, 50) // Top of canvas
+        ctx.fillText(label, x, 50)
+
+        // Draw Flow Arrow between layers
+        if (layerIndex < layers.length - 1) {
+          const nextX = layerGap * (layerIndex + 2)
+          const midX = (x + nextX) / 2
+          const arrowY = height - 50 // Near bottom
+
+          ctx.fillStyle = "rgba(6, 182, 212, 0.5)" // Cyan, semi-transparent
+          ctx.strokeStyle = "rgba(6, 182, 212, 0.5)"
+          ctx.lineWidth = 2
+          
+          // Arrow Line
+          ctx.beginPath()
+          ctx.moveTo(midX - 20, arrowY)
+          ctx.lineTo(midX + 20, arrowY)
+          ctx.stroke()
+          
+          // Arrow Head
+          ctx.beginPath()
+          ctx.moveTo(midX + 20, arrowY)
+          ctx.lineTo(midX + 15, arrowY - 5)
+          ctx.lineTo(midX + 15, arrowY + 5)
+          ctx.fill()
+          
+          // Label
+          ctx.fillStyle = "rgba(6, 182, 212, 0.8)"
+          ctx.font = "12px sans-serif"
+          ctx.fillText("Forward Prop", midX, arrowY + 20)
+        }
 
         if (layerIndex >= layers.length - 1) return
 
