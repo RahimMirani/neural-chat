@@ -97,7 +97,7 @@ export default function Home() {
               tokenEvent={tokenEvent}
             />
           ) : (
-            <NeuralNetworkIllustrative />
+            <NeuralNetworkIllustrative isProcessing={isProcessing} />
           )}
         </div>
       </div>

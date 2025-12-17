@@ -9,12 +9,17 @@ interface TooltipState {
   text: string
 }
 
-export function NeuralNetworkIllustrative() {
+interface NeuralNetworkIllustrativeProps {
+  isProcessing: boolean
+}
+
+export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustrativeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   
-  // Store node positions for hit testing
+  // Animation state
+  const timeRef = useRef(0)
   const nodesRef = useRef<{x: number, y: number, r: number, layer: number}[]>([])
 
   useEffect(() => {
@@ -35,6 +40,14 @@ export function NeuralNetworkIllustrative() {
     window.addEventListener("resize", resizeCanvas)
 
     const animate = () => {
+      // Update animation time
+      if (isProcessing) {
+        timeRef.current += 0.1
+      } else {
+        // Slowly decay to 0 or reset
+        timeRef.current = Math.max(0, timeRef.current - 0.1)
+      }
+
       // Dark background to match app theme
       ctx.fillStyle = "#000000"
       ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -65,8 +78,22 @@ export function NeuralNetworkIllustrative() {
           for (let j = 0; j < nextLayerCount; j++) {
             const nextY = (height / (nextLayerCount + 1)) * (j + 1)
             
-            // Subtle connection lines
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.15)"
+            // Check if signal is passing through this connection
+            // Wave equation: Peak moves from left to right
+            const wavePos = (timeRef.current % (layers.length * 2)) 
+            const layerPos = layerIndex + 0.5 // Connection is between layers
+            const dist = Math.abs(wavePos - layerPos)
+            const isActive = dist < 0.8
+            
+            // Connection style
+            if (isActive && isProcessing) {
+                ctx.strokeStyle = "rgba(250, 204, 21, 0.8)" // Active Yellow
+                ctx.lineWidth = 3
+            } else {
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.1)" // Dim white
+                ctx.lineWidth = 1
+            }
+
             ctx.beginPath()
             ctx.moveTo(currentX, currentY)
             ctx.lineTo(nextX, nextY)
@@ -77,7 +104,7 @@ export function NeuralNetworkIllustrative() {
                 const midX = (currentX + nextX) / 2
                 const midY = (currentY + nextY) / 2
                 
-                ctx.fillStyle = "rgba(250, 204, 21, 0.8)" // Yellow text
+                ctx.fillStyle = isActive && isProcessing ? "rgba(250, 204, 21, 1)" : "rgba(255, 255, 255, 0.4)"
                 ctx.font = "10px monospace"
                 ctx.fillText("w: 0.5", midX, midY - 5)
             }
@@ -134,24 +161,33 @@ export function NeuralNetworkIllustrative() {
           const y = (height / (nodeCount + 1)) * (i + 1)
           const r = 25
           
+          // Calculate activation based on wave
+          const wavePos = (timeRef.current % (layers.length * 2))
+          const dist = Math.abs(wavePos - layerIndex)
+          const activation = isProcessing ? Math.max(0, 1 - dist * 1.5) : 0
+          
           // Store for hit testing
           nodesRef.current.push({ x, y, r, layer: layerIndex })
 
           // Glow effect
-          const gradient = ctx.createRadialGradient(x, y, 0, x, y, r)
-          gradient.addColorStop(0, "rgba(250, 204, 21, 0.2)") // Yellow glow
-          gradient.addColorStop(1, "rgba(250, 204, 21, 0)")
+          const gradient = ctx.createRadialGradient(x, y, 0, x, y, r + 10)
+          if (activation > 0.1) {
+             gradient.addColorStop(0, `rgba(250, 204, 21, ${activation * 0.6})`) // Active Yellow Glow
+          } else {
+             gradient.addColorStop(0, "rgba(255, 255, 255, 0.05)") // Idle dim
+          }
+          gradient.addColorStop(1, "rgba(0,0,0,0)")
           
           ctx.fillStyle = gradient
           ctx.beginPath()
-          ctx.arc(x, y, r, 0, Math.PI * 2)
+          ctx.arc(x, y, r + 10, 0, Math.PI * 2)
           ctx.fill()
 
           // Node border
-          ctx.strokeStyle = "rgba(250, 204, 21, 0.8)" // Yellow border
+          ctx.strokeStyle = activation > 0.5 ? "rgba(250, 204, 21, 1)" : "rgba(255, 255, 255, 0.3)"
           ctx.lineWidth = 2
           ctx.beginPath()
-          ctx.arc(x, y, 12, 0, Math.PI * 2)
+          ctx.arc(x, y, r, 0, Math.PI * 2)
           ctx.stroke()
 
           // Inner fill
@@ -159,14 +195,12 @@ export function NeuralNetworkIllustrative() {
           ctx.fill()
 
           // Educational: Show activation values (simulated)
-          ctx.fillStyle = "rgba(255, 255, 255, 0.9)"
+          ctx.fillStyle = activation > 0.5 ? "rgba(250, 204, 21, 1)" : "rgba(255, 255, 255, 0.5)"
           ctx.font = "10px monospace"
           ctx.textAlign = "center"
           ctx.textBaseline = "middle"
           
-          let val = "0.0"
-          if (layerIndex === 0) val = (0.2 + i * 0.3).toFixed(1) // Fake input values
-          else val = (Math.random() * 0.9).toFixed(1) // Fake hidden values
+          let val = activation.toFixed(1)
           
           ctx.fillText(val, x, y)
         }
@@ -181,7 +215,7 @@ export function NeuralNetworkIllustrative() {
       window.removeEventListener("resize", resizeCanvas)
       cancelAnimationFrame(animationId)
     }
-  }, [])
+  }, [isProcessing]) // Add isProcessing to dependency
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const canvas = canvasRef.current
