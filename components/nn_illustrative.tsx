@@ -71,6 +71,16 @@ export function NeuralNetworkIllustrative() {
             ctx.moveTo(currentX, currentY)
             ctx.lineTo(nextX, nextY)
             ctx.stroke()
+
+            // Educational: Show some weight values
+            if (i === 1 && j === 1) { // Pick a specific connection to label
+                const midX = (currentX + nextX) / 2
+                const midY = (currentY + nextY) / 2
+                
+                ctx.fillStyle = "rgba(250, 204, 21, 0.8)" // Yellow text
+                ctx.font = "10px monospace"
+                ctx.fillText("w: 0.5", midX, midY - 5)
+            }
           }
         }
       })
@@ -102,6 +112,18 @@ export function NeuralNetworkIllustrative() {
           // Inner fill
           ctx.fillStyle = "rgba(0, 0, 0, 0.9)"
           ctx.fill()
+
+          // Educational: Show activation values (simulated)
+          ctx.fillStyle = "rgba(255, 255, 255, 0.9)"
+          ctx.font = "10px monospace"
+          ctx.textAlign = "center"
+          ctx.textBaseline = "middle"
+          
+          let val = "0.0"
+          if (layerIndex === 0) val = (0.2 + i * 0.3).toFixed(1) // Fake input values
+          else val = (Math.random() * 0.9).toFixed(1) // Fake hidden values (flickering slightly is okay for now)
+          
+          ctx.fillText(val, x, y)
         }
       })
 
