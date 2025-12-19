@@ -43,7 +43,7 @@ export default function Home() {
     <div
       id="main-container"
       className="h-screen w-screen bg-background overflow-hidden select-none"
-      onMouseMove={isDragging ? handleMouseMove : undefined}
+      onMouseMove={isDragging ? handleMouseMove : undefined as any}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
