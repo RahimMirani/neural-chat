@@ -6,7 +6,7 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "../components/ui/button.tsx"
-import { Send, Zap, Sparkles, Brain } from "lucide-react"
+import { Send, Brain } from "lucide-react"
 
 interface ChatInterfaceProps {
   onProcessingChange: (isProcessing: boolean) => void
