@@ -111,15 +111,10 @@ export function ChatInterface({ onProcessingChange, onTokenReceived }: ChatInter
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center px-4">
             <div className="text-center space-y-6 max-w-sm">
-              <div className="relative mx-auto w-24 h-24">
-                <div className="absolute inset-0 bg-yellow-400/20 rounded-2xl blur-2xl animate-pulse" />
-                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-yellow-500/20 rounded-2xl animate-[spin_20s_linear_infinite]" style={{ transform: 'perspective(1000px) rotateY(15deg)' }} />
-                <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-yellow-400/20 to-yellow-500/10 border-2 border-yellow-400/40 flex items-center justify-center backdrop-blur-sm shadow-xl">
-                  <div className="relative">
-                    <Brain className="w-12 h-12 text-yellow-400" />
-                    <Sparkles className="w-6 h-6 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
-                  </div>
-                </div>
+              <div className="relative mx-auto w-20 h-20">
+                 <div className="w-20 h-20 rounded-2xl bg-yellow-400/10 border border-yellow-400/20 flex items-center justify-center shadow-2xl">
+                     <Brain className="w-10 h-10 text-yellow-400" />
+                 </div>
               </div>
               <div className="space-y-2">
                 <h2 className="text-foreground font-bold text-lg bg-gradient-to-r from-yellow-400 to-yellow-500 bg-clip-text text-transparent">
