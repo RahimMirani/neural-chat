@@ -1,47 +1,40 @@
 # Neural Chat
 
-An interactive AI chat application with real-time neural network visualization and an illustrative mode. Watch how neural networks process information as you chat with AI, featuring a fully interactive 3D neural network visualization that demonstrates forward propagation, signal flow, and network activations in real-time.
+An interactive AI chat application that visualizes neural network processing in real-time. Features two distinct visualization modes to help users understand how LLMs work.
 
-## Interactive Neural Network Visualization
+## Features
 
-- Real-time forward propagation showing actual neural network computation
-- 3D visualization with full rotation capabilities
-- Signal flow animation with weighted connections
-- Interactive controls:
-  - Drag to rotate the 3D view
-  - Scroll to zoom (zooms towards cursor position)
-  - Click and drag individual neurons to reposition them
-  - Manual zoom controls with percentage display
-- Visual indicators:
-  - Green connections represent positive weights
-  - Red connections represent negative weights
-  - Node brightness indicates activation level
-  - Animated signal pulses during processing
-- Illustrative Mode:
+### 1. Interactive Mode (3D)
+A visually immersive 3D visualization of a neural network.
+- **Real-time Activation:** Watch neurons light up as the AI generates text.
+- **Signal Flow:** Weighted connections pulse with activity.
+- **Interactive Controls:** Rotate, zoom, and explore the network structure.
 
-## Neural Network Explanation
+### 2. Learn Mode (2D)
+A clean, educational view designed for understanding the math.
+- **Math Reveal:** Click any neuron to see the exact calculation (Weighted Sum + Activation).
+- **Synced Propagation:** Visual waves show how data flows from Input → Hidden → Output layers.
+- **Explanations:** Tooltips explain the role of inputs, hidden features, and output probabilities.
 
-The visualization implements a simplified but realistic neural network architecture:
+## Tech Stack
+- **Next.js 14** (App Router)
+- **React** (Hooks & State)
+- **Canvas API** (No heavy 3D libraries, pure performance)
+- **OpenAI API** (GPT-4o mini)
+- **Tailwind CSS**
 
-- **Architecture**: 6-layer fully connected network (5 → 8 → 12 → 10 → 8 → 5 neurons)
-- **Forward Propagation**: Calculates weighted sums layer by layer and applies ReLU-like activation functions
-- **Signal Flow**: Visualizes how information propagates through connections with weighted signal strength
-- **Real-time Updates**: Activates during AI processing to demonstrate how neural networks compute responses
+## Getting Started
 
-### Visual Elements
-
-- **Nodes (Neurons)**: Represent individual neurons in the network
-  - Size and brightness indicate activation level
-  - Green glow indicates high activation
-  - Yellow glow indicates medium activation
-  
-- **Connections**: Show synaptic connections between neurons
-  - Green connections represent positive weights (excitatory)
-  - Red connections represent negative weights (inhibitory)
-  - Line thickness represents connection strength
-  - Animated pulses show signal flow during processing
-
-- **Layers**: The network processes information through multiple layers
-  - Input layer (leftmost) receives the message
-  - Hidden layers process and transform information
-  - Output layer (rightmost) generates the response
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env.local` file with your OpenAI API key:
+   ```env
+   OPENAI_API_KEY=sk-...
+   ```
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
