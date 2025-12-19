@@ -366,7 +366,7 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
                           Value = {Math.random().toFixed(2)}
                       </div>
                   </div>
-              ) : (
+              ) : selectedNode.layer === 1 ? (
                   <div className="space-y-3">
                       <p className="text-white/60 text-xs mb-2">Each neuron sums up inputs from the previous layer, weighted by connection strength.</p>
                       
@@ -400,6 +400,39 @@ export function NeuralNetworkIllustrative({ isProcessing }: NeuralNetworkIllustr
                               <span className="text-white/60">Math.max(0, 0.29) = </span>
                               <span className="text-yellow-400 font-bold text-lg">0.29</span>
                           </div>
+                      </div>
+                  </div>
+              ) : (
+                  <div className="space-y-3">
+                      <p className="text-white/60 text-xs mb-2">Output neurons calculate the confidence score (logit) for a specific token.</p>
+                      
+                      <div className="space-y-1 font-mono text-xs">
+                          <div className="flex justify-between text-white/40">
+                              <span>Features</span>
+                              <span>Weights</span>
+                          </div>
+                          <div className="flex justify-between text-white/80 border-b border-white/10 pb-1">
+                              <span>(0.9 × 0.5)</span>
+                              <span className="text-yellow-400">0.45</span>
+                          </div>
+                          <div className="flex justify-between text-white/80 border-b border-white/10 pb-1">
+                              <span>(0.1 × -0.2)</span>
+                              <span className="text-red-400">-0.02</span>
+                          </div>
+                          
+                          <div className="flex justify-between pt-2 font-bold">
+                              <span className="text-cyan-400">Raw Score (Logit)</span>
+                              <span className="text-white">2.45</span>
+                          </div>
+                      </div>
+
+                      <div className="mt-2 pt-2 border-t border-white/10">
+                          <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Probability (Softmax)</p>
+                          <div className="flex items-center gap-2 bg-white/5 p-2 rounded">
+                              <span className="text-white/60">e^2.45 / Σe^x = </span>
+                              <span className="text-green-400 font-bold text-lg">92%</span>
+                          </div>
+                          <p className="text-white/40 text-[10px] mt-1 text-right">Predicted Token: "neural"</p>
                       </div>
                   </div>
               )}
