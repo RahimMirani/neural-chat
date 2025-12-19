@@ -35,7 +35,11 @@ export async function POST(req: Request) {
          - Output Layer: Predicts the next token (word) probability.
          - Activation Function: We use ReLU (rectified linear unit) for hidden layers.
       
-      Be concise, friendly, and encourage users to switch to "Learn Mode" if they want to see the math behind the magic.`,
+      IMPORTANT INSTRUCTIONS:
+      - Keep responses SHORT and direct.
+      - Avoid filler words or polite fluff.
+      - Only explain what is strictly necessary to answer the user's question.
+      - Do not hallucinate features not listed above.`,
       messages: prompt, // Use the converted messages
       abortSignal: req.signal,
     })
