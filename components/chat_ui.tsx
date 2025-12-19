@@ -74,23 +74,20 @@ export function ChatInterface({ onProcessingChange, onTokenReceived }: ChatInter
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-black/40 backdrop-blur-sm">
       {/* Header */}
-      <div className="border-b border-yellow-400/20 px-4 py-4 bg-gradient-to-b from-yellow-400/10 via-yellow-400/5 to-transparent">
+      <div className="border-b border-white/10 px-4 py-3 bg-black/20">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-yellow-400/30 rounded-xl blur-md animate-pulse" />
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400/40 to-yellow-500/20 border border-yellow-400/50 flex items-center justify-center backdrop-blur-sm shadow-lg">
-              <Brain className="w-5 h-5 text-yellow-400" />
-            </div>
+          <div className="w-8 h-8 rounded-lg bg-yellow-400/10 border border-yellow-400/20 flex items-center justify-center">
+             <Brain className="w-4 h-4 text-yellow-400" />
           </div>
-          <div className="flex-1">
-            <h1 className="text-base font-bold text-foreground bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-[shimmer_3s_ease-in-out_infinite]">
+          <div>
+            <h1 className="text-sm font-semibold text-white tracking-wide">
               Neural Chat
             </h1>
-            <p className="text-xs text-foreground/60 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
-              Real-time AI visualization
+            <p className="text-[10px] text-white/40 uppercase tracking-wider flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${status === "streaming" ? "bg-green-400 animate-pulse" : "bg-white/20"}`} />
+              {status === "streaming" ? "Processing" : "Ready"}
             </p>
           </div>
         </div>
