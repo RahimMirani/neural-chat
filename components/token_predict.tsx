@@ -92,12 +92,9 @@ export function TokenPredictionVisualization({
       <div className="flex-shrink-0 border-b border-white/10 px-6 py-4 bg-black/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-yellow-400" />
-            </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-wide">Token Predictions</h2>
-              <p className="text-[10px] text-white/50 uppercase tracking-wider">
+              <h2 className="text-lg font-bold text-white tracking-wide">Token Predictions</h2>
+              <p className="text-[12px] text-white/50 uppercase tracking-wider">
                 Real-time probability distribution
               </p>
             </div>
