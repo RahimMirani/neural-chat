@@ -1,6 +1,6 @@
 # Neural Chat
 
-An interactive AI chat application that visualizes neural network processing in real-time. Features two distinct visualization modes to help users understand how LLMs work.
+An interactive AI chat application that visualizes neural network processing in real-time. Features three distinct visualization modes to help users understand how LLMs work.
 
 ## Features
 
@@ -10,7 +10,13 @@ A visually immersive 3D visualization of a neural network.
 - **Signal Flow:** Weighted connections pulse with activity.
 - **Interactive Controls:** Rotate, zoom, and explore the network structure.
 
-### 2. Learn Mode (2D)
+### 2. Token Predictions
+See what the model is "thinking" as it generates each word.
+- **Probability Bars:** Animated bar chart showing top 5 token candidates.
+- **Live Streaming:** Predictions update in real-time as tokens are generated.
+- **Token History:** Click any past token to review its probability distribution.
+
+### 3. Learn Mode (2D)
 A clean, educational view designed for understanding the math.
 - **Math Reveal:** Click any neuron to see the exact calculation (Weighted Sum + Activation).
 - **Synced Propagation:** Visual waves show how data flows from Input → Hidden → Output layers.
