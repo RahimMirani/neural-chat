@@ -15,6 +15,13 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model: openai("gpt-4o-mini"), // Using OpenAI provider directly
+      // Enable logprobs to get top 5 token alternatives for visualization
+      providerOptions: {
+        openai: {
+          logprobs: true,
+          topLogprobs: 5,
+        },
+      },
       system: `You are the AI assistant for "Neural Chat", an educational application that visualizes how neural networks work in real-time.
       
       Your goal is to help users understand neural networks, deep learning, and how the visualization on their screen relates to the concepts.
