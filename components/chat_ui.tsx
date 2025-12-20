@@ -221,7 +221,7 @@ export function ChatInterface({ onProcessingChange, onTokenReceived, onLogprobsR
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 justify-center pt-2">
-                {["Tell me a joke", "Explain neural networks", "What's AI?"].map((suggestion, idx) => (
+                {["What are LLMs?", "Explain neural networks", "What's AI?"].map((suggestion, idx) => (
                   <button
                     key={idx}
                     onClick={() => {
