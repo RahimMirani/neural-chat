@@ -29,6 +29,13 @@ A clean, educational view designed for understanding the math.
 - **OpenAI API** (GPT-4o mini)
 - **Tailwind CSS**
 
+## Future/Roadmap
+- **Real Token Probabilities:** Stream actual logprobs from OpenAI API for authentic predictions.
+- **Attention Heatmap:** Visualize transformer self-attention patterns between tokens.
+- **Tokenizer Animation:** Show how text is split into tokens before processing.
+- **Temperature Controls:** Adjust sampling temperature and see network behavior change.
+- **Multi-LLM Support:** Visuals should adapt based on LLM selected 
+
 ## Getting Started
 
 1. Clone the repository
