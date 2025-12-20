@@ -87,17 +87,6 @@ export default function Home() {
               Interactive
             </button>
             <button
-              onClick={() => setVisualizationMode("illustration")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${
-                visualizationMode === "illustration"
-                  ? "bg-yellow-400 text-black shadow-lg shadow-yellow-400/20"
-                  : "bg-white/5 text-foreground/60 hover:bg-white/10 hover:text-foreground"
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              Learn
-            </button>
-            <button
               onClick={() => setVisualizationMode("tokens")}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${
                 visualizationMode === "tokens"
@@ -107,6 +96,17 @@ export default function Home() {
             >
               <BarChart3 className="w-3.5 h-3.5" />
               Tokens
+            </button>
+            <button
+              onClick={() => setVisualizationMode("illustration")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${
+                visualizationMode === "illustration"
+                  ? "bg-yellow-400 text-black shadow-lg shadow-yellow-400/20"
+                  : "bg-white/5 text-foreground/60 hover:bg-white/10 hover:text-foreground"
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              Learn
             </button>
           </div>
 
