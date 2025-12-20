@@ -87,8 +87,8 @@ export function TokenPredictionVisualization({
   }
 
   return (
-    <div className="w-full h-full bg-black flex flex-col overflow-hidden">
-      {/* Header */}
+    <div className="w-full h-full bg-black flex flex-col overflow-hidden pt-14">
+      {/* Header - with top padding to avoid overlap with tab buttons */}
       <div className="flex-shrink-0 border-b border-white/10 px-6 py-4 bg-black/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
