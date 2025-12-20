@@ -95,20 +95,92 @@ export function ChatInterface({ onProcessingChange, onTokenReceived, onLogprobsR
           const generateAlternatives = (token: string): TokenPrediction[] => {
             // Common word alternatives for demonstration
             const alternatives: Record<string, string[]> = {
+              // Articles & Determiners
               "the": ["a", "an", "this", "that"],
-              "is": ["was", "are", "will", "has"],
               "a": ["the", "an", "one", "some"],
-              "to": ["for", "with", "into", "and"],
-              "and": ["or", "but", "with", "then"],
+              "an": ["a", "the", "one", "another"],
+              // Prepositions
+              "to": ["for", "with", "into", "towards"],
               "of": ["for", "with", "from", "about"],
-              "in": ["on", "at", "with", "for"],
-              "that": ["which", "this", "what", "it"],
-              "it": ["this", "that", "he", "she"],
-              "for": ["to", "with", "about", "from"],
+              "in": ["on", "at", "within", "inside"],
+              "on": ["in", "at", "upon", "over"],
+              "at": ["in", "on", "by", "near"],
+              "for": ["to", "with", "about", "towards"],
+              "with": ["by", "using", "through", "via"],
+              "from": ["by", "through", "via", "of"],
+              // Conjunctions
+              "and": ["or", "but", "yet", "while"],
+              "or": ["and", "nor", "either", "whether"],
+              "but": ["and", "yet", "however", "although"],
+              // Pronouns
+              "it": ["this", "that", "which", "what"],
+              "that": ["which", "this", "what", "who"],
+              "this": ["that", "it", "which", "the"],
+              "they": ["we", "you", "people", "these"],
+              "I": ["we", "you", "one", "someone"],
+              // Verbs
+              "is": ["was", "are", "will", "has"],
+              "are": ["is", "were", "have", "will"],
+              "was": ["is", "were", "had", "would"],
+              "be": ["become", "remain", "stay", "get"],
+              "have": ["has", "had", "get", "own"],
+              "do": ["make", "perform", "execute", "accomplish"],
+              "can": ["could", "may", "will", "should"],
+              "will": ["would", "can", "shall", "may"],
+              // Common words
+              "not": ["never", "hardly", "rarely", "no"],
+              "so": ["very", "quite", "really", "thus"],
+              "just": ["only", "simply", "merely", "really"],
+              "also": ["too", "additionally", "furthermore", "moreover"],
+              "very": ["quite", "really", "extremely", "highly"],
+              // Question words
+              "what": ["which", "how", "why", "where"],
+              "how": ["why", "what", "when", "where"],
+              "why": ["how", "what", "when", "where"],
+              "when": ["where", "how", "while", "if"],
+              "where": ["when", "how", "wherever", "here"],
             }
             
             const cleanToken = token.toLowerCase().trim()
-            const alts = alternatives[cleanToken] || ["...", "the", "and", "is"]
+            
+            // Try to find alternatives, or generate smart fallbacks
+            let alts = alternatives[cleanToken]
+            
+            if (!alts) {
+              // Generate contextual alternatives based on token characteristics
+              if (token.endsWith("ing")) {
+                // Verb ending in -ing
+                const base = token.slice(0, -3)
+                alts = [`${base}ed`, `${base}s`, `${base}tion`, `${base}er`]
+              } else if (token.endsWith("ed")) {
+                // Past tense verb
+                const base = token.slice(0, -2)
+                alts = [`${base}ing`, `${base}s`, `${base}`, `${base}er`]
+              } else if (token.endsWith("ly")) {
+                // Adverb
+                alts = ["quickly", "slowly", "really", "simply"]
+              } else if (token.endsWith("tion")) {
+                // Noun ending in -tion
+                alts = ["action", "function", "section", "option"]
+              } else if (token.endsWith("ment")) {
+                alts = ["development", "environment", "movement", "statement"]
+              } else if (token.endsWith("ness")) {
+                alts = ["awareness", "happiness", "business", "process"]
+              } else if (token.endsWith("er")) {
+                alts = ["other", "another", "better", "larger"]
+              } else if (token.endsWith("est")) {
+                alts = ["best", "most", "least", "first"]
+              } else if (token.length <= 2) {
+                // Short tokens - common short words
+                alts = ["to", "of", "in", "on"]
+              } else if (token.length <= 4) {
+                // Medium short tokens
+                alts = ["then", "when", "that", "this"]
+              } else {
+                // For longer unknown tokens, use similar-length common words
+                alts = ["which", "would", "about", "there"]
+              }
+            }
             
             // Generate probability distribution (chosen token gets highest)
             const chosenProb = 40 + Math.random() * 35 // 40-75%
