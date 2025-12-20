@@ -5,7 +5,7 @@ import React from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { useState, useRef, useEffect } from "react"
-import { Button } from "../components/ui/button.tsx"
+import { Button } from "../components/ui/button"
 import { Send, Brain } from "lucide-react"
 
 // Type for token prediction data
