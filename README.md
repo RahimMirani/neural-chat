@@ -51,3 +51,19 @@ A clean, educational view designed for understanding the math.
    ```bash
    npm run dev
    ```
+
+## Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### Ideas for Contributions
+- Implement items from the [Roadmap](#futureroadmap)
+- Improve visualizations or add new modes
+- Optimize Canvas rendering performance
+- Add support for additional LLM providers
