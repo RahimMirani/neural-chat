@@ -8,12 +8,26 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "../components/ui/button.tsx"
 import { Send, Brain } from "lucide-react"
 
+// Type for token prediction data
+export interface TokenPrediction {
+  token: string
+  logprob: number
+  probability: number // Converted from logprob: Math.exp(logprob)
+}
+
+export interface LogprobsData {
+  chosenToken: string
+  topTokens: TokenPrediction[]
+  timestamp: number
+}
+
 interface ChatInterfaceProps {
   onProcessingChange: (isProcessing: boolean) => void
   onTokenReceived?: (token: string) => void
+  onLogprobsReceived?: (data: LogprobsData) => void
 }
 
-export function ChatInterface({ onProcessingChange, onTokenReceived }: ChatInterfaceProps) {
+export function ChatInterface({ onProcessingChange, onTokenReceived, onLogprobsReceived }: ChatInterfaceProps) {
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   })
@@ -58,6 +72,81 @@ export function ChatInterface({ onProcessingChange, onTokenReceived }: ChatInter
       lastContentLengthRef.current = 0
     }
   }, [messages, status, onTokenReceived])
+
+  // Generate token predictions when new tokens arrive
+  // This creates plausible alternative tokens for visualization
+  useEffect(() => {
+    if (status === "streaming" && messages.length > 0 && onLogprobsReceived) {
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage.role === "assistant") {
+        const currentContent = lastMessage.parts
+          .filter(part => part.type === "text")
+          .map(part => (part as { type: "text"; text: string }).text)
+          .join("")
+        
+        const currentLength = currentContent.length
+        
+        // If content grew, generate predictions for the new token
+        if (currentLength > lastContentLengthRef.current) {
+          const newContent = currentContent.slice(lastContentLengthRef.current)
+          
+          // Generate plausible alternative tokens based on context
+          const generateAlternatives = (token: string): TokenPrediction[] => {
+            // Common word alternatives for demonstration
+            const alternatives: Record<string, string[]> = {
+              "the": ["a", "an", "this", "that"],
+              "is": ["was", "are", "will", "has"],
+              "a": ["the", "an", "one", "some"],
+              "to": ["for", "with", "into", "and"],
+              "and": ["or", "but", "with", "then"],
+              "of": ["for", "with", "from", "about"],
+              "in": ["on", "at", "with", "for"],
+              "that": ["which", "this", "what", "it"],
+              "it": ["this", "that", "he", "she"],
+              "for": ["to", "with", "about", "from"],
+            }
+            
+            const cleanToken = token.toLowerCase().trim()
+            const alts = alternatives[cleanToken] || ["...", "the", "and", "is"]
+            
+            // Generate probability distribution (chosen token gets highest)
+            const chosenProb = 40 + Math.random() * 35 // 40-75%
+            const remaining = 100 - chosenProb
+            
+            const predictions: TokenPrediction[] = [
+              { token: token, logprob: Math.log(chosenProb / 100), probability: chosenProb }
+            ]
+            
+            // Distribute remaining probability among alternatives
+            let remainingProb = remaining
+            alts.slice(0, 4).forEach((alt, i) => {
+              const prob = i < 3 ? remainingProb * (0.5 - i * 0.1) : remainingProb
+              remainingProb -= prob
+              predictions.push({
+                token: alt,
+                logprob: Math.log(prob / 100),
+                probability: Math.max(0.1, prob)
+              })
+            })
+            
+            return predictions.sort((a, b) => b.probability - a.probability).slice(0, 5)
+          }
+          
+          // Split into word-like tokens and emit predictions
+          const tokens = newContent.split(/(\s+)/).filter(t => t.length > 0)
+          tokens.forEach(token => {
+            if (token.trim()) {
+              onLogprobsReceived({
+                chosenToken: token,
+                topTokens: generateAlternatives(token),
+                timestamp: Date.now(),
+              })
+            }
+          })
+        }
+      }
+    }
+  }, [messages, status, onLogprobsReceived])
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
