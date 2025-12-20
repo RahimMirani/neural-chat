@@ -9,10 +9,12 @@ interface TokenPredictionVisualizationProps {
   isProcessing: boolean
 }
 
+// Store full prediction data in history for replay
 interface TokenHistoryEntry {
   token: string
   probability: number
   timestamp: number
+  topTokens: TokenPrediction[] // Full predictions for this token
 }
 
 export function TokenPredictionVisualization({ 
@@ -24,6 +26,7 @@ export function TokenPredictionVisualization({
   const [tokenHistory, setTokenHistory] = useState<TokenHistoryEntry[]>([])
   const [animatingBars, setAnimatingBars] = useState(false)
   const [tokenCount, setTokenCount] = useState(0)
+  const [selectedHistoryIndex, setSelectedHistoryIndex] = useState<number | null>(null) // For viewing past tokens
   const lastTimestampRef = useRef(0)
 
   // Process new logprobs data
@@ -40,17 +43,45 @@ export function TokenPredictionVisualization({
       setChosenToken(logprobsData.chosenToken)
       setTokenCount(prev => prev + 1)
       
-      // Add to history (keep last 20)
+      // Clear history selection to follow live stream
+      setSelectedHistoryIndex(null)
+      
+      // Add to history with full prediction data (keep last 50)
       setTokenHistory(prev => {
         const newEntry: TokenHistoryEntry = {
           token: logprobsData.chosenToken,
           probability: logprobsData.topTokens[0]?.probability || 0,
           timestamp: logprobsData.timestamp,
+          topTokens: [...logprobsData.topTokens], // Store full predictions
         }
-        return [newEntry, ...prev].slice(0, 20)
+        return [newEntry, ...prev].slice(0, 50)
       })
     }
   }, [logprobsData])
+
+  // Handle clicking on a history item
+  const handleHistoryClick = (index: number) => {
+    if (selectedHistoryIndex === index) {
+      // Clicking same item deselects it (go back to live)
+      setSelectedHistoryIndex(null)
+      // Restore to latest live data if available
+      if (tokenHistory.length > 0) {
+        setCurrentPredictions(tokenHistory[0].topTokens)
+        setChosenToken(tokenHistory[0].token)
+      }
+    } else {
+      // Select this history item
+      setSelectedHistoryIndex(index)
+      const entry = tokenHistory[index]
+      if (entry) {
+        setCurrentPredictions(entry.topTokens)
+        setChosenToken(entry.token)
+        // Animate the bars
+        setAnimatingBars(true)
+        setTimeout(() => setAnimatingBars(false), 300)
+      }
+    }
+  }
 
   // Reset when processing stops
   useEffect(() => {
@@ -117,15 +148,30 @@ export function TokenPredictionVisualization({
           {chosenToken ? (
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
-                <Zap className="w-4 h-4 text-yellow-400" />
-                <span className="text-xs text-white/60 uppercase tracking-wider">Selected Token</span>
+                <Zap className={`w-4 h-4 ${selectedHistoryIndex !== null ? "text-cyan-400" : "text-yellow-400"}`} />
+                <span className="text-xs text-white/60 uppercase tracking-wider">
+                  {selectedHistoryIndex !== null ? "Viewing Historical Token" : "Selected Token"}
+                </span>
+                {selectedHistoryIndex !== null && (
+                  <span className="px-2 py-0.5 rounded-full bg-cyan-400/20 text-cyan-400 text-[10px] font-bold">
+                    #{tokenHistory.length - selectedHistoryIndex} of {tokenHistory.length}
+                  </span>
+                )}
               </div>
-              <div className={`inline-flex items-center gap-3 px-5 py-3 rounded-xl bg-yellow-400/10 border-2 border-yellow-400/50 ${animatingBars ? "animate-pulse" : ""}`}>
-                <span className="text-2xl font-bold text-yellow-400 font-mono">
+              <div className={`inline-flex items-center gap-3 px-5 py-3 rounded-xl ${
+                selectedHistoryIndex !== null 
+                  ? "bg-cyan-400/10 border-2 border-cyan-400/50" 
+                  : "bg-yellow-400/10 border-2 border-yellow-400/50"
+              } ${animatingBars ? "animate-pulse" : ""}`}>
+                <span className={`text-2xl font-bold font-mono ${
+                  selectedHistoryIndex !== null ? "text-cyan-400" : "text-yellow-400"
+                }`}>
                   {formatToken(chosenToken)}
                 </span>
                 {currentPredictions[0] && (
-                  <span className="text-lg font-semibold text-yellow-400/70">
+                  <span className={`text-lg font-semibold ${
+                    selectedHistoryIndex !== null ? "text-cyan-400/70" : "text-yellow-400/70"
+                  }`}>
                     {currentPredictions[0].probability.toFixed(1)}%
                   </span>
                 )}
@@ -216,31 +262,68 @@ export function TokenPredictionVisualization({
 
         {/* Right: Token History */}
         <div className="w-64 border-l border-white/10 bg-white/[0.02] flex flex-col">
-          <div className="px-4 py-3 border-b border-white/10">
+          <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
             <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wider">Token History</h3>
+            {selectedHistoryIndex === null && tokenHistory.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-green-400/20 text-green-400 text-[10px] font-bold uppercase animate-pulse">
+                Live
+              </span>
+            )}
+            {selectedHistoryIndex !== null && (
+              <button 
+                onClick={() => {
+                  setSelectedHistoryIndex(null)
+                  if (tokenHistory.length > 0) {
+                    setCurrentPredictions(tokenHistory[0].topTokens)
+                    setChosenToken(tokenHistory[0].token)
+                  }
+                }}
+                className="px-2 py-0.5 rounded-full bg-cyan-400/20 text-cyan-400 text-[10px] font-bold uppercase hover:bg-cyan-400/30 transition-colors cursor-pointer"
+              >
+                ← Back to Live
+              </button>
+            )}
           </div>
           
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
             {tokenHistory.length > 0 ? (
-              tokenHistory.map((entry, idx) => (
-                <div 
-                  key={entry.timestamp}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg transition-all ${
-                    idx === 0 ? "bg-yellow-400/10 border border-yellow-400/30" : "bg-white/5 hover:bg-white/10"
-                  }`}
-                  style={{ 
-                    opacity: 1 - (idx * 0.04),
-                    transform: idx === 0 ? "scale(1.02)" : "scale(1)"
-                  }}
-                >
-                  <span className={`font-mono text-sm ${idx === 0 ? "text-yellow-400 font-bold" : "text-white/70"}`}>
-                    {formatToken(entry.token)}
-                  </span>
-                  <span className={`text-xs ${idx === 0 ? "text-yellow-400/70" : "text-white/40"}`}>
-                    {entry.probability.toFixed(0)}%
-                  </span>
-                </div>
-              ))
+              tokenHistory.map((entry, idx) => {
+                const isSelected = selectedHistoryIndex === idx
+                const isLatest = idx === 0 && selectedHistoryIndex === null
+                
+                return (
+                  <div 
+                    key={entry.timestamp}
+                    onClick={() => handleHistoryClick(idx)}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                      isSelected 
+                        ? "bg-cyan-400/20 border-2 border-cyan-400/50 scale-[1.02]" 
+                        : isLatest 
+                          ? "bg-yellow-400/10 border border-yellow-400/30" 
+                          : "bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/20"
+                    }`}
+                    style={{ 
+                      opacity: isSelected ? 1 : 1 - (idx * 0.02),
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      {isSelected && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                      )}
+                      <span className={`font-mono text-sm ${
+                        isSelected ? "text-cyan-400 font-bold" : isLatest ? "text-yellow-400 font-bold" : "text-white/70"
+                      }`}>
+                        {formatToken(entry.token)}
+                      </span>
+                    </div>
+                    <span className={`text-xs ${
+                      isSelected ? "text-cyan-400/70" : isLatest ? "text-yellow-400/70" : "text-white/40"
+                    }`}>
+                      {entry.probability.toFixed(0)}%
+                    </span>
+                  </div>
+                )
+              })
             ) : (
               <div className="text-center py-8">
                 <p className="text-white/30 text-xs">No tokens yet</p>
