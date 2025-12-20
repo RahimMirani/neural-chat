@@ -1,17 +1,19 @@
 "use client"
 
 import React, { useState, useCallback } from "react"
-import { ChatInterface } from "../components/chat_ui"
+import { ChatInterface, LogprobsData } from "../components/chat_ui"
 import { NeuralNetworkVisualization } from "../components/nn_ui"
 import { NeuralNetworkIllustrative } from "../components/nn_illustrative"
-import { BookOpen, Activity } from "lucide-react"
+import { TokenPredictionVisualization } from "../components/token_predict"
+import { BookOpen, Activity, BarChart3 } from "lucide-react"
 
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [tokenEvent, setTokenEvent] = useState<{ id: number; token: string } | null>(null)
+  const [logprobsData, setLogprobsData] = useState<LogprobsData | null>(null)
   const [chatWidth, setChatWidth] = useState(30)
   const [isDragging, setIsDragging] = useState(false)
-  const [visualizationMode, setVisualizationMode] = useState<"interactive" | "illustration">("interactive")
+  const [visualizationMode, setVisualizationMode] = useState<"interactive" | "illustration" | "tokens">("interactive")
 
   const handleMouseDown = () => {
     setIsDragging(true)
@@ -39,6 +41,11 @@ export default function Home() {
     setTokenEvent({ id: Date.now(), token })
   }, [])
 
+  // Handle logprobs data for token prediction visualization
+  const handleLogprobsReceived = useCallback((data: LogprobsData) => {
+    setLogprobsData(data)
+  }, [])
+
   return (
     <div
       id="main-container"
@@ -53,6 +60,7 @@ export default function Home() {
           <ChatInterface 
             onProcessingChange={setIsProcessing} 
             onTokenReceived={handleTokenReceived}
+            onLogprobsReceived={handleLogprobsReceived}
           />
         </div>
 
@@ -89,15 +97,33 @@ export default function Home() {
               <BookOpen className="w-3.5 h-3.5" />
               Learn
             </button>
+            <button
+              onClick={() => setVisualizationMode("tokens")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${
+                visualizationMode === "tokens"
+                  ? "bg-yellow-400 text-black shadow-lg shadow-yellow-400/20"
+                  : "bg-white/5 text-foreground/60 hover:bg-white/10 hover:text-foreground"
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Tokens
+            </button>
           </div>
 
-          {visualizationMode === "interactive" ? (
+          {visualizationMode === "interactive" && (
             <NeuralNetworkVisualization 
               isProcessing={isProcessing} 
               tokenEvent={tokenEvent}
             />
-          ) : (
+          )}
+          {visualizationMode === "illustration" && (
             <NeuralNetworkIllustrative isProcessing={isProcessing} />
+          )}
+          {visualizationMode === "tokens" && (
+            <TokenPredictionVisualization 
+              logprobsData={logprobsData}
+              isProcessing={isProcessing}
+            />
           )}
         </div>
       </div>
