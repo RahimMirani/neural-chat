@@ -36,6 +36,7 @@ export function ChatInterface({ onProcessingChange, onTokenReceived, onLogprobsR
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const lastContentLengthRef = useRef(0)
+  const lastLogprobsLengthRef = useRef(0) // Separate ref for logprobs tracking
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -87,8 +88,8 @@ export function ChatInterface({ onProcessingChange, onTokenReceived, onLogprobsR
         const currentLength = currentContent.length
         
         // If content grew, generate predictions for the new token
-        if (currentLength > lastContentLengthRef.current) {
-          const newContent = currentContent.slice(lastContentLengthRef.current)
+        if (currentLength > lastLogprobsLengthRef.current) {
+          const newContent = currentContent.slice(lastLogprobsLengthRef.current)
           
           // Generate plausible alternative tokens based on context
           const generateAlternatives = (token: string): TokenPrediction[] => {
@@ -143,8 +144,14 @@ export function ChatInterface({ onProcessingChange, onTokenReceived, onLogprobsR
               })
             }
           })
+          
+          // Update the ref after processing
+          lastLogprobsLengthRef.current = currentLength
         }
       }
+    } else if (status !== "streaming") {
+      // Reset when not streaming
+      lastLogprobsLengthRef.current = 0
     }
   }, [messages, status, onLogprobsReceived])
 
