@@ -23,8 +23,8 @@ A clean, educational view designed for understanding the math.
 - **Explanations:** Tooltips explain the role of inputs, hidden features, and output probabilities.
 
 ## Tech Stack
-- **Next.js 14** (App Router)
-- **React** (Hooks & State)
+- **Next.js 16** (App Router)
+- **React 19** (Hooks & State)
 - **Canvas API** (No heavy 3D libraries, pure performance)
 - **OpenAI API** (GPT-4o mini)
 - **Tailwind CSS**
