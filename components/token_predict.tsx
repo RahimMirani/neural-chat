@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
-import { Sparkles, Zap } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Zap } from "lucide-react"
 import { LogprobsData, TokenPrediction } from "./chat_ui"
 
 interface TokenPredictionVisualizationProps {
