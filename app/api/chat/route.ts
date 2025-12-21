@@ -52,8 +52,7 @@ export async function POST(req: Request) {
     })
 
     return result.toUIMessageStreamResponse()
-  } catch (error) {
-    console.error("Error in chat route:", error)
+  } catch {
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       {
