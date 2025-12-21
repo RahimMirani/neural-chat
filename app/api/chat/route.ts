@@ -11,6 +11,18 @@ export async function POST(req: Request) {
       return new Response("Messages are required", { status: 400 })
     }
 
+    // Security: Input Validation
+    // 1. Limit total number of messages to prevent context stuffing
+    if (messages.length > 20) {
+      return new Response("Too many messages in history", { status: 400 })
+    }
+
+    // 2. Limit content length of the last message to prevent token abuse
+    const lastMessage = messages[messages.length - 1]
+    if (lastMessage.content && lastMessage.content.length > 1000) {
+      return new Response("Message too long (max 1000 characters)", { status: 400 })
+    }
+
     const prompt = convertToModelMessages(messages)
 
     const result = streamText({
