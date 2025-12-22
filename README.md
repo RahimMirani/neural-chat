@@ -10,7 +10,7 @@ A visually immersive 3D visualization of a neural network.
 - **Signal Flow:** Weighted connections pulse with activity.
 - **Interactive Controls:** Rotate, zoom, and explore the network structure.
 
-### 2. Token Predictions
+### 2. Token Predictions (Currently simulated with hardcoded dictionary)
 See what the model is "thinking" as it generates each word.
 - **Probability Bars:** Animated bar chart showing top 5 token candidates.
 - **Live Streaming:** Predictions update in real-time as tokens are generated.
